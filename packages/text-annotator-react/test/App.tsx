@@ -1,12 +1,19 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { AnnotationBody, Annotorious, useAnnotationStore, useAnnotator } from '@annotorious/react';
 import { TextAnnotator, TextAnnotatorPopup, TextAnnotatorPopupProps } from '../src';
-import { TextAnnotation, TextAnnotator as RecogitoTextAnnotator, W3CTextFormat } from '@recogito/text-annotator';
+import {
+  TextAnnotation,
+  TextAnnotator as RecogitoTextAnnotator,
+  W3CTextAnnotation,
+  W3CTextFormat
+} from '@recogito/text-annotator';
+
+type RecogitoW3CTextAnnotator = RecogitoTextAnnotator<W3CTextAnnotation>;
 
 const TestPopup = (props: TextAnnotatorPopupProps) => {
 
   const store = useAnnotationStore();
-  const anno = useAnnotator<RecogitoTextAnnotator>();
+  const anno = useAnnotator<RecogitoW3CTextAnnotator>();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -40,21 +47,21 @@ const TestPopup = (props: TextAnnotatorPopupProps) => {
 
 const MockStorage = () => {
 
-  const anno = useAnnotator<RecogitoTextAnnotator>();
+  const anno = useAnnotator<RecogitoW3CTextAnnotator>();
 
   useEffect(() => {
     if (!anno) return;
 
-    const handleCreateAnnotation = (annotation: TextAnnotation) => console.log('create', annotation);
+    const handleCreateAnnotation = (annotation: W3CTextAnnotation) => console.log('create', annotation);
     anno.on('createAnnotation', handleCreateAnnotation);
 
-    const handleDeleteAnnotation = (annotation: TextAnnotation) => console.log('delete', annotation);
+    const handleDeleteAnnotation = (annotation: W3CTextAnnotation) => console.log('delete', annotation);
     anno.on('deleteAnnotation', handleDeleteAnnotation);
 
-    const handleSelectionChanged = (annotations: TextAnnotation[]) => console.log('selection changed', annotations);
+    const handleSelectionChanged = (annotations: W3CTextAnnotation[]) => console.log('selection changed', annotations);
     anno.on('selectionChanged', handleSelectionChanged);
 
-    const handleUpdateAnnotation = (annotation: TextAnnotation, previous: TextAnnotation) => console.log('update', annotation, previous);
+    const handleUpdateAnnotation = (annotation: W3CTextAnnotation, previous: W3CTextAnnotation) => console.log('update', annotation, previous);
     anno.on('updateAnnotation', handleUpdateAnnotation);
 
     return () => {
