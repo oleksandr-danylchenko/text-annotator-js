@@ -24,5 +24,8 @@ export default defineConfig({
         assetFileNames: 'text-annotator.[ext]'
       }
     }
+  },
+  optimizeDeps: {
+   force: true
   }
 });
