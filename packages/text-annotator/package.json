@@ -37,7 +37,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@annotorious/core": "^3.0.0-rc.28",
+    "@annotorious/core": "https://gitpkg.now.sh/oleksandr-danylchenko/annotorious/packages/annotorious-core?main&scripts.postinstall=npm%20install%20--ignore-scripts%20%26%26%20npm%20run%20build%20%26%26%20rm%20-rf%20node_modules%2F",
     "colord": "^2.9.3",
     "dequal": "^2.0.3",
     "rbush": "^3.0.1",
