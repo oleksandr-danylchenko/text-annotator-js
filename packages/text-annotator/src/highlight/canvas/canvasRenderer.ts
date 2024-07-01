@@ -1,3 +1,5 @@
+import type { ViewportState } from '@annotorious/core';
+import { dequal } from 'dequal/lite';
 import type { ViewportBounds } from '../viewport';
 import { debounce } from '../../utils';
 import type { HighlightStyle } from '../HighlightStyle';
@@ -6,7 +8,6 @@ import type { HighlightPainter } from '../HighlightPainter';
 import { createBaseRenderer, type RendererImplementation } from '../baseRenderer';
 import type { Highlight } from '../Highlight';
 import type { TextAnnotatorState } from 'src/state';
-import type { ViewportState } from '@annotorious/core';
 
 const createCanvas = () => {
   const canvas = document.createElement('canvas');
@@ -14,7 +15,7 @@ const createCanvas = () => {
   canvas.height = window.innerHeight;
   canvas.className = 'r6o-highlight-layer bg';
   return canvas;
-}
+};
 
 const resetCanvas = (canvas: HTMLCanvasElement, highres?: boolean) => {
   canvas.width = highres ? 2 * window.innerWidth : window.innerWidth;
@@ -26,7 +27,21 @@ const resetCanvas = (canvas: HTMLCanvasElement, highres?: boolean) => {
     context.scale(2, 2);
     context.translate(0.5, 0.5);
   }
-}
+};
+
+/**
+ * Highlights rendering on the canvas is an order-sensitive operation.
+ * The later the highlight is rendered, the higher it will be in the visual stack.
+ *
+ * By default, we should expect that the newer highlight
+ * will be rendered over the older one
+ */
+const sortHighlightsByCreation = (highlights: Highlight[]) =>
+  [...highlights].sort((highlightA, highlightB) => {
+    const { annotation: { target: { created: createdA } } } = highlightA;
+    const { annotation: { target: { created: createdB } } } = highlightB;
+    return createdA.getTime() - createdB.getTime();
+  });
 
 const createRenderer = (container: HTMLElement): RendererImplementation => {
 
@@ -37,13 +52,15 @@ const createRenderer = (container: HTMLElement): RendererImplementation => {
 
   container.insertBefore(canvas, container.firstChild);
 
-  const redraw = (   
-    highlights: Highlight[], 
+  // Currently rendered highlights
+  let currentRendered: Highlight[] = [];
+
+  const redraw = (
+    highlights: Highlight[],
     viewportBounds: ViewportBounds,
     currentStyle?: HighlightStyleExpression,
     currentPainter?: HighlightPainter
   ) => requestAnimationFrame(() => {
-
     const { width, height } = canvas;
 
     // New render loop - clear canvases
@@ -54,18 +71,8 @@ const createRenderer = (container: HTMLElement): RendererImplementation => {
 
     const { top, left } = viewportBounds;
 
-    /**
-     * Highlights rendering on the canvas is an order-sensitive operation.
-     * The later the highlight is rendered, the higher it will be in the visual stack.
-     *
-     * By default, we should expect that the newer highlight
-     * will be rendered over the older one
-     */
-    const highlightsByCreation = [...highlights].sort((highlightA, highlightB) => {
-      const { annotation: { target: { created: createdA } } } = highlightA;
-      const { annotation: { target: { created: createdB } } } = highlightB;
-      return createdA.getTime() - createdB.getTime();
-    })
+    const noChanges = dequal(currentRendered, highlights);
+    const highlightsByCreation = noChanges ? currentRendered : sortHighlightsByCreation(highlights);
 
     highlightsByCreation.forEach(h => {
       const base: HighlightStyle = currentStyle
@@ -89,7 +96,6 @@ const createRenderer = (container: HTMLElement): RendererImplementation => {
 
       ctx.fillStyle = style.fill;
       ctx.globalAlpha = style.fillOpacity || 1;
-
 
       /**
        * The default browser's selection highlight is a bit taller than the text itself.
@@ -123,34 +129,32 @@ const createRenderer = (container: HTMLElement): RendererImplementation => {
         });
       }
     });
+
+    currentRendered = highlightsByCreation;
   });
 
-  const onResize = debounce(() => {
-    resetCanvas(canvas);
-  });
-
+  const onResize = debounce(() => resetCanvas(canvas));
   window.addEventListener('resize', onResize);
 
   const setVisible = (visible: boolean) => {
     console.log('setVisible not implemented on Canvas renderer');
-  }
+  };
 
   const destroy = () => {
     container.removeChild(canvas);
-
     window.removeEventListener('resize', onResize);
-  }
+  };
 
   return {
     destroy,
     setVisible,
     redraw
-  }
+  };
 
-}
+};
 
 export const createCanvasRenderer = (
-  container: HTMLElement, 
+  container: HTMLElement,
   state: TextAnnotatorState,
   viewport: ViewportState
 ) => createBaseRenderer(container, state, viewport, createRenderer(container));
