@@ -46,6 +46,10 @@ export const TextAnnotatorPopup = (props: TextAnnotationPopupProps) => {
   useEffect(() => {
     // Ignore all selection changes except those
     // accompanied by a pointer event.
+
+
+    console.log('Selection hook', { pointerEvent, selected });
+
     if (pointerEvent) {
       if (selected.length > 0 && pointerEvent.type === 'pointerup') {
         setIsOpen(true);

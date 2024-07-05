@@ -13,12 +13,13 @@ import { createSpatialTree } from './spatialTree';
 import type { TextAnnotation, TextAnnotationTarget } from '../model';
 import type { TextAnnotationStore } from './TextAnnotationStore';
 import { isRevived, reviveAnnotation, reviveTarget } from '../utils';
+import { createTextSelectionState, SelectAction, type TextSelectionState } from './TextSelection';
 
 export interface TextAnnotatorState extends AnnotatorState<TextAnnotation> {
 
   store: TextAnnotationStore;
 
-  selection: SelectionState<TextAnnotation>;
+  selection: TextSelectionState<TextAnnotation>;
 
   hover: HoverState<TextAnnotation>;
 
@@ -35,7 +36,8 @@ export const createTextAnnotatorState = (
 
   const tree = createSpatialTree(store, container);
 
-  const selection = createSelectionState<TextAnnotation>(store, defaultPointerAction);
+  // const selection = createSelectionState<TextAnnotation>(store, defaultPointerAction);
+  const selection = createTextSelectionState<TextAnnotation>(store, defaultPointerAction as unknown as SelectAction);
 
   const hover = createHoverState(store);
 
