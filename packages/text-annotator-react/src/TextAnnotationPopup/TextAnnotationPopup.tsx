@@ -161,11 +161,11 @@ export const TextAnnotationPopup: FC<TextAnnotationPopupProps> = (props) => {
    * Announce the navigation hint only on the keyboard selection,
    * because the focus isn't shifted to the popup automatically then
    */
-  useAnnouncePopupNavigation({
-    disabled: isFocused,
-    floatingOpen: isOpen,
-    message: ariaNavigationMessage,
-  });
+  // useAnnouncePopupNavigation({
+  //   disabled: isFocused,
+  //   floatingOpen: isOpen,
+  //   message: ariaNavigationMessage,
+  // });
 
   return isOpen && annotation ? (
     <FloatingPortal>
