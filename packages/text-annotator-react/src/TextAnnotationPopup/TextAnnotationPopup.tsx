@@ -7,7 +7,6 @@ import {
   type TextAnnotation,
   type TextAnnotator,
 } from '@soomo/text-annotator';
-
 import {
   arrow,
   autoUpdate,
@@ -24,6 +23,8 @@ import {
   useInteractions,
   useRole
 } from '@floating-ui/react';
+import { isMobile } from './isMobile';
+import { useAnnotationQuoteIdle } from './useAnnotationQuoteIdle';
 
 import { isMobile } from './isMobile';
 import { useAnnouncePopupNavigation, useAnnotationQuoteIdling } from '../hooks';
@@ -63,7 +64,7 @@ export const TextAnnotationPopup: FC<TextAnnotationPopupProps> = (props) => {
   const { selected, event } = useSelection<TextAnnotation>();
   const annotation = selected[0]?.annotation;
 
-  const isAnnotationQuoteIdling = useAnnotationQuoteIdling(annotation?.id);
+  const isAnnotationQuoteIdle = useAnnotationQuoteIdle(annotation?.id);
 
   const [isOpen, setOpen] = useState(selected?.length > 0);
   const handleClose = () => r?.cancelSelected();
@@ -108,13 +109,13 @@ export const TextAnnotationPopup: FC<TextAnnotationPopupProps> = (props) => {
     const annotationId = annotation?.id;
     const annotationSelectorsLength = annotation?.target.selector.length;
 
-    if (annotationId && annotationSelectorsLength > 0 && isAnnotationQuoteIdling) {
+    if (annotationId && annotationSelectorsLength > 0 && useAnnotationQuoteIdle) {
       const bounds = r?.state.store.getAnnotationBounds(annotation.id);
       setOpen(Boolean(bounds));
     } else {
       setOpen(false);
     }
-  }, [annotation?.id, annotation?.target.selector, isAnnotationQuoteIdling, r?.state.store]);
+  }, [annotation?.id, annotation?.target.selector, useAnnotationQuoteIdle, r?.state.store]);
 
   useEffect(() => {
     if (!r) return;

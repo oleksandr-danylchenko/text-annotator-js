@@ -288,7 +288,11 @@ export const createSelectionHandler = (
     if (!currentTarget || currentTarget.selector.length === 0) {
       onSelectionChange(evt);
     }
-
+/**
+     * The selection couldn't be initiated,
+     * as it might span over a not-annotatable element.
+     */
+    if (!currentTarget) return;
     upsertCurrentTarget();
 
     selection.userSelect(currentTarget.annotation, clonePointerEvent(evt));
