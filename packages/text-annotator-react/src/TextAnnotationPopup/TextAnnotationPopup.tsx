@@ -1,11 +1,11 @@
-import React, { FC, ReactNode, useCallback, useRef, useEffect, useMemo, useState } from 'react';
+import React, { FC, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAnnotator, useSelection } from '@annotorious/react';
 import {
   NOT_ANNOTATABLE_CLASS,
-  toViewportBounds,
-  toDomRectList,
   type TextAnnotation,
   type TextAnnotator,
+  toDomRectList,
+  toViewportBounds
 } from '@soomo/text-annotator';
 import {
   arrow,
@@ -25,9 +25,6 @@ import {
 } from '@floating-ui/react';
 import { isMobile } from './isMobile';
 import { useAnnotationQuoteIdle } from './useAnnotationQuoteIdle';
-
-import { isMobile } from './isMobile';
-import { useAnnouncePopupNavigation, useAnnotationQuoteIdling } from '../hooks';
 
 import './TextAnnotationPopup.css';
 
