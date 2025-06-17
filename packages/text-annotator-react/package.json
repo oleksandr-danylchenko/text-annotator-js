@@ -46,9 +46,9 @@
     }
   },
   "dependencies": {
-    "@annotorious/core": "^3.3.6",
-    "@annotorious/react": "^3.3.6",
-    "@floating-ui/react": "^0.27.9",
+    "@annotorious/core": "^3.4.7",
+    "@annotorious/react": "^3.4.7",
+    "@floating-ui/react": "^0.27.12",
     "@react-aria/live-announcer": "^3.3.4",
     "@soomo/text-annotator": "3.2.0-staging.9",
     "@recogito/text-annotator-tei": "3.0.5",
