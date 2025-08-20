@@ -10,7 +10,8 @@ export interface HighlightStyle extends Pick<DrawingStyle, 'fill' | 'fillOpacity
   underlineOffset?: number;
 
   underlineThickness?: number;
-  
+
+  filter?: string;
 }
 
 export type HighlightStyleExpression = HighlightStyle 

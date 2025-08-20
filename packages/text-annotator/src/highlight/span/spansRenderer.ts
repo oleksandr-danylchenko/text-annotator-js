@@ -89,6 +89,9 @@ const createRenderer = (container: HTMLElement): RendererImplementation => {
             .alpha(style?.fillOpacity === undefined ? DEFAULT_STYLE.fillOpacity : style.fillOpacity)
             .toHex();
 
+          if (style.filter)
+            span.style.filter = style.filter;
+
           if (style.underlineStyle)
             span.style.borderStyle = style.underlineStyle;
 
