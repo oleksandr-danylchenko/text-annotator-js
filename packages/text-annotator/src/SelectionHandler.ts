@@ -140,9 +140,12 @@ export const SelectionHandler = (
     const containedRanges = 
       selectionRanges.map(r => trimRangeToContainer(r, container));
 
-    // The selection should be captured only within the annotatable container
-    if (containedRanges.every(r => isWhitespaceOrEmpty(r))) return;
+    // The selection should be captured over the textual content
+    if (containedRanges.every(r => isWhitespaceOrEmpty(r))) {
+      return;
+    }
 
+    // The selection should be captured only within the annotatable container
     const annotatableRanges = containedRanges.flatMap(r => splitAnnotatableRanges(container, r.cloneRange()));
 
     const hasChanged =
