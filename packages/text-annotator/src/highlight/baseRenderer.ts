@@ -138,6 +138,7 @@ export const createBaseRenderer = <T extends TextAnnotatorState = TextAnnotatorS
 
   // Refresh on scroll
   const onScroll = () => redraw(true);
+
   document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
   // Refresh on resize
@@ -159,10 +160,13 @@ export const createBaseRenderer = <T extends TextAnnotatorState = TextAnnotatorS
   // in the DOM. (This happens in Recogito for example)
   const config: MutationObserverInit = { attributes: true, childList: true, subtree: true };
 
-  const mutationObserver = new MutationObserver((records: MutationRecord[]) => {
-    const isInternal = records.every(record => record.target === container || container.contains(record.target));
-    if (!isInternal) redraw(true);
-  });
+  const mutationObserver = new MutationObserver(debounce((records: MutationRecord[]) => {
+    const isInternal = records
+      .every(record => record.target === container || container.contains(record.target));
+
+    if (!isInternal)
+      redraw(true);
+  }, 150));
 
   mutationObserver.observe(document.body, config);
 

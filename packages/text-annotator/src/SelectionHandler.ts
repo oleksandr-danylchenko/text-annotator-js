@@ -78,7 +78,7 @@ export const createSelectionHandler = (
      * be annotatable (like a component popup).
      * Note that Chrome/iOS will sometimes return the root doc as target!
      */
-    currentTarget = isNotAnnotatable(evt.target as Node)
+    currentTarget = isNotAnnotatable(container, evt.target as Node)
 
     ? undefined
       : {
@@ -96,10 +96,10 @@ export const createSelectionHandler = (
 
     /**
      * In iOS when a user clicks on a button, the `selectionchange` event is fired.
-     * However, the generated selection is empty and the `anchorNode` is `null`.
-     * That doesn't give us information about whether the selection is in the annotatable area
-     * or whether the previously selected text was dismissed.
-     * Therefore - we should bail out from such a range processing.
+     * However, the generated selection is empty and the `anchorNode` is `null`. That
+     * doesn't give us information about whether the selection is in the annotatable area
+     * or whether the previously selected text was dismissed. Therefore we should bail
+     * out from such a range processing.
      *
      * @see https://github.com/recogito/text-annotator-js/pull/164#issuecomment-2416961473
      */
@@ -108,12 +108,11 @@ export const createSelectionHandler = (
     }
 
     /**
-     * This is to handle cases where the selection is "hijacked"
-     * by another element in a not-annotatable area.
-     * A rare case in theory.
-     * But rich text editors will like Quill do it.
+     * This is to handle cases where the selection is "hijacked" by
+     * another element in a not-annotatable area. A rare case in practice.
+     * But rich text editors like Quill will do it!
      */
-    if (isNotAnnotatable(sel.anchorNode)) {
+    if (isNotAnnotatable(container, sel.anchorNode)) {
       currentTarget = undefined;
       return;
     }
@@ -127,11 +126,9 @@ export const createSelectionHandler = (
      */
     if (lastDownEvent?.type === 'pointerdown') {
       if (timeDifference < 1000 && !currentTarget) {
-
         // Chrome/iOS does not reliably fire the 'selectstart' event!
         onSelectStart(lastDownEvent || evt);
       } else if (sel.isCollapsed && timeDifference < CLICK_TIMEOUT) {
-
         // Firefox doesn't fire the 'selectstart' when user clicks
         // over the text, which collapses the selection
         onSelectStart(lastDownEvent || evt);
@@ -156,17 +153,21 @@ export const createSelectionHandler = (
       return;
     }
 
-    const selectionRange = sel.getRangeAt(0);
+    const selectionRanges =
+      Array.from(Array(sel.rangeCount).keys()).map(idx => sel.getRangeAt(idx));
+
+    const containedRanges =
+      selectionRanges.map(r => trimRangeToContainer(r, container));
 
     // The selection should be captured only within the annotatable container
-    const containedRange = trimRangeToContainer(selectionRange, container);
-    if (isWhitespaceOrEmpty(containedRange)) return;
+    if (containedRanges.every(r => isWhitespaceOrEmpty(r))) return;
 
-    const annotatableRanges = splitAnnotatableRanges(containedRange.cloneRange());
+    const annotatableRanges = containedRanges.flatMap(r => splitAnnotatableRanges(container, r.cloneRange()));
 
     const hasChanged =
       annotatableRanges.length !== currentTarget.selector.length ||
       annotatableRanges.some((r, i) => r.toString() !== currentTarget.selector[i]?.quote);
+
     if (!hasChanged) return;
 
     currentTarget = {
@@ -193,7 +194,7 @@ export const createSelectionHandler = (
    * to the initial pointerdown event and remember the button
    */
   const onPointerDown = (evt: PointerEvent) => {
-    if (isNotAnnotatable(evt.target as Node)) return;
+    if (isNotAnnotatable(container, evt.target as Node)) return;
 
     /**
      * Cloning the event to prevent it from accidentally being `undefined`
@@ -204,7 +205,14 @@ export const createSelectionHandler = (
   };
 
   const onPointerUp = async (evt: PointerEvent) => {
-    if (isNotAnnotatable(evt.target as Node) || !isLeftClick) return;
+    if (!isLeftClick) return;
+
+    if (isNotAnnotatable(container, evt.target as Node)) {
+      if (options.dismissOnClickOutside)
+        selection.clear();
+
+      return;
+    }
 
     // Logic for selecting an existing annotation
     const clickSelect = () => {
@@ -283,14 +291,13 @@ export const createSelectionHandler = (
 
     /**
      * When selecting the initial word, Chrome Android
-     * fires the`contextmenu`before the `selectionchange`
+     * fires `contextmenu`before `selectionchange`
      */
     if (!currentTarget || currentTarget.selector.length === 0) {
       onSelectionChange(evt);
     }
 /**
-     * The selection couldn't be initiated,
-     * as it might span over a not-annotatable element.
+     * The selection couldn't be initiated - might span over a not-annotatable element.
      */
     if (!currentTarget) return;
     upsertCurrentTarget();
