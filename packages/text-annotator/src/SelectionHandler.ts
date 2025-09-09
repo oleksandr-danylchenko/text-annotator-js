@@ -408,7 +408,7 @@ export const createSelectionHandler = (
     }
   };
 
-  document.addEventListener('pointerdown', onPointerDown);
+  container.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('contextmenu', onContextMenu);
 
@@ -423,7 +423,7 @@ export const createSelectionHandler = (
 
     onSelectionChange.clear();
 
-    document.removeEventListener('pointerdown', onPointerDown);
+    container.removeEventListener('pointerdown', onPointerDown);
     document.removeEventListener('pointerup', onPointerUp);
     document.removeEventListener('contextmenu', onContextMenu);
 
