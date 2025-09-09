@@ -4,10 +4,10 @@ import {
   debounce,
   NOT_ANNOTATABLE_CLASS,
   TextAnnotationStore,
+  toViewportBounds,
+  toDomRectList,
   type TextAnnotation,
   type TextAnnotator,
-  toDomRectList,
-  toViewportBounds
 } from '@soomo/text-annotator';
 import {
   arrow,
