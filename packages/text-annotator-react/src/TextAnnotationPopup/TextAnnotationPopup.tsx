@@ -67,7 +67,7 @@ const updateViewportBounds = debounce((annotationId: string, store: TextAnnotati
   requestAnimationFrame(() => {
     const bounds = store.getAnnotationBounds(annotationId);
     if (!bounds) return;
-    cachedBounds = toViewportBounds(bounds, container);
+    cachedBounds = toViewportBounds(bounds, container.getBoundingClientRect());
   });
 }, 250);
 
