@@ -44,7 +44,7 @@ export const createSelectionHandler = (
     annotatingEnabled,
     offsetReferenceSelector,
     selectionMode,
-    dismissOnNotAnnotatable = 'ANNOTATABLE_AREAS'
+    dismissOnNotAnnotatable = 'NEVER'
   } = options;
 
   const setUser = (user?: User) => currentUser = user;
