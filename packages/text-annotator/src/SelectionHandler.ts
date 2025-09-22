@@ -199,8 +199,6 @@ export const createSelectionHandler = (
    * to the initial pointerdown event and remember the button
    */
   const onPointerDown = (evt: PointerEvent) => {
-    if (isNotAnnotatable(container, evt.target as Node)) return;
-
     /**
      * Cloning the event to prevent it from accidentally being `undefined`
      * @see https://github.com/recogito/text-annotator-js/commit/65d13f3108c429311cf8c2523f6babbbc946013d#r144033948
@@ -212,19 +210,19 @@ export const createSelectionHandler = (
   const onPointerUp = async (evt: PointerEvent) => {
     if (!isLeftClick) return;
 
-    if (isNotAnnotatable(container, evt.target as Node)) {
-      const shouldDismissSelection = typeof dismissOnNotAnnotatable === 'function'
-        ? dismissOnNotAnnotatable(evt, container)
-        : dismissOnNotAnnotatable === 'ALWAYS';
-      if (shouldDismissSelection) {
-        selection.clear();
-      }
-      return;
-    }
-
     // Logic for selecting an existing annotation
     const clickSelect = () => {
       const { x, y } = container.getBoundingClientRect();
+
+      if (isNotAnnotatable(container, evt.target as Node)) {
+        const shouldDismissSelection = typeof dismissOnNotAnnotatable === 'function'
+          ? dismissOnNotAnnotatable(evt, container)
+          : dismissOnNotAnnotatable === 'ALWAYS';
+        if (shouldDismissSelection) {
+          selection.clear();
+        }
+        return;
+      }
 
       const hovered =
         evt.target instanceof Node &&
@@ -408,7 +406,7 @@ export const createSelectionHandler = (
     }
   };
 
-  container.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('contextmenu', onContextMenu);
 
@@ -423,7 +421,7 @@ export const createSelectionHandler = (
 
     onSelectionChange.clear();
 
-    container.removeEventListener('pointerdown', onPointerDown);
+    document.removeEventListener('pointerdown', onPointerDown);
     document.removeEventListener('pointerup', onPointerUp);
     document.removeEventListener('contextmenu', onContextMenu);
 
@@ -439,6 +437,6 @@ export const createSelectionHandler = (
     setFilter,
     setUser,
     setAnnotatingEnabled
-  };
+  }
 
 };
