@@ -210,13 +210,15 @@ export const createSelectionHandler = (
   const onPointerUp = async (evt: PointerEvent) => {
     if (!isLeftClick) return;
 
+    const lastUpEvent = clonePointerEvent(evt);
+
     // Logic for selecting an existing annotation
     const clickSelect = () => {
       const { x, y } = container.getBoundingClientRect();
 
-      if (isNotAnnotatable(container, evt.target as Node)) {
+      if (isNotAnnotatable(container, lastUpEvent.target as Node)) {
         const shouldDismissSelection = typeof dismissOnNotAnnotatable === 'function'
-          ? dismissOnNotAnnotatable(evt, container)
+          ? dismissOnNotAnnotatable(lastUpEvent, container)
           : dismissOnNotAnnotatable === 'ALWAYS';
         if (shouldDismissSelection) {
           selection.clear();
@@ -225,9 +227,14 @@ export const createSelectionHandler = (
       }
 
       const hovered =
-        evt.target instanceof Node &&
-        container.contains(evt.target) &&
-        store.getAt(evt.clientX - x, evt.clientY - y, selectionMode === 'all', currentFilter);
+        lastUpEvent.target instanceof Node &&
+        container.contains(lastUpEvent.target) &&
+        store.getAt(
+          lastUpEvent.clientX - x,
+          lastUpEvent.clientY - y,
+          selectionMode === 'all',
+          currentFilter
+        );
 
       if (hovered) {
         const { selected } = selection;
@@ -240,14 +247,14 @@ export const createSelectionHandler = (
           !nextIds.every(id => currentIds.has(id));
 
         if (hasChanged)
-          selection.userSelect(nextIds, evt);
+          selection.userSelect(nextIds, lastUpEvent);
       } else {
         selection.clear();
       }
     };
 
 
-    const timeDifference = evt.timeStamp - lastDownEvent.timeStamp;
+    const timeDifference = lastUpEvent.timeStamp - lastDownEvent.timeStamp;
     if (timeDifference < CLICK_TIMEOUT) {
       await pollSelectionCollapsed();
 
@@ -262,7 +269,7 @@ export const createSelectionHandler = (
     if (currentTarget && currentTarget.selector.length > 0) {
 
       upsertCurrentTarget();
-      selection.userSelect(currentTarget.annotation, clonePointerEvent(evt));
+      selection.userSelect(currentTarget.annotation, lastUpEvent);
     }
   }
 
