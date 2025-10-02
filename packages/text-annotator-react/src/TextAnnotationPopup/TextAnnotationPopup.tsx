@@ -21,10 +21,7 @@ import {
   offset,
   Placement,
   shift,
-  useDismiss,
-  useFloating,
-  useInteractions,
-  useRole
+  useFloating
 } from '@floating-ui/react';
 import { isMobile } from './isMobile';
 import { useAnnotationQuoteIdle } from '../hooks';
@@ -42,6 +39,8 @@ interface TextAnnotationPopupProps {
   arrowProps?: Omit<FloatingArrowProps, 'context' | 'ref'>;
 
   asPortal?: boolean;
+
+  autoFocus?: boolean;
 
   placement?: Placement;
 
@@ -182,8 +181,13 @@ export const TextAnnotationPopup = (props: TextAnnotationPopupProps) => {
 
   // Don't shift focus to the floating element if selected via keyboard or on mobile.
   const initialFocus = useMemo(() => {
-    return (event?.type === 'keyup' || event?.type === 'contextmenu' || isMobile()) ? -1 : 0;
-  }, [event]);
+    return (
+      props.autoFocus === false || 
+      event?.type === 'keyup' || 
+      event?.type === 'contextmenu' || 
+      isMobile()
+    ) ? -1 : 0;
+  }, [props.autoFocus, event]);
 
   /**
    * Announce the navigation hint only on the keyboard selection,
@@ -203,7 +207,7 @@ export const TextAnnotationPopup = (props: TextAnnotationPopupProps) => {
         modal={false}
         closeOnFocusOut={true}
         returnFocus={false}
-        initialFocus={initialFocus}>
+        initialFocus={-1}>
         <div
           className={`a9s-popup r6o-popup annotation-popup r6o-text-popup ${NOT_ANNOTATABLE_CLASS}`}
           ref={refs.setFloating}

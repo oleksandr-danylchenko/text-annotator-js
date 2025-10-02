@@ -1,6 +1,7 @@
 export * from './cancelSingleClickEvents';
 export * from './device';
 export * from './programmaticallyFocusable';
+export * from './getHighlightClientRects';
 export * from './getQuoteContext';
 export * from './isNotAnnotatable';
 export * from './isRevived';

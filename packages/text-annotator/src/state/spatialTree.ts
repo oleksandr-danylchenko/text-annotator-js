@@ -7,6 +7,7 @@ import {
   isRevived,
   reviveSelector,
   mergeClientRects,
+  getHighlightClientRects,
   toParentBounds
 } from '../utils';
 import type { AnnotationRects } from './TextAnnotationStore';
@@ -37,7 +38,12 @@ export interface SpatialTreeEvents {
 
 }
 
-export const createSpatialTree = <T extends TextAnnotation>(store: Store<T>, container: HTMLElement) => {
+export const createSpatialTree = <T extends TextAnnotation>(
+  store: Store<T>,
+  container: HTMLElement,
+  hMergeTolerance?: number,
+  vMergeTolerance?: number
+) => {
 
   const tree = new RBush<IndexedHighlightRect>();
 
@@ -49,14 +55,17 @@ export const createSpatialTree = <T extends TextAnnotation>(store: Store<T>, con
   const toItems = (target: TextAnnotationTarget, offset: DOMRect): IndexedHighlightRect[] => {
     const rects = target.selector.flatMap(s => {
       const revivedRange = isRevived([s]) ? s.range : reviveSelector(s, container).range;
-      return Array.from(revivedRange.getClientRects());
+      return getHighlightClientRects(revivedRange);
     });
 
     /**
      * Offset the merged client rects so that coords
      * are relative to the parent container
      */
-    const merged = mergeClientRects(rects).map(rect => toParentBounds(rect, offset));
+    const merged = mergeClientRects(rects, hMergeTolerance, vMergeTolerance)
+      .map(rect => toParentBounds(rect, offset));
+
+    // console.log(`Merging took ${performance.now() - start}ms`);
 
     return merged.map(rect => {
       const { x, y, width, height } = rect;
