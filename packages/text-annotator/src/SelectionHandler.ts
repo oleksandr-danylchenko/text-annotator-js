@@ -2,11 +2,11 @@ import debounce from 'debounce';
 import { v4 as uuidv4 } from 'uuid';
 import hotkeys from 'hotkeys-js';
 import { poll } from 'poll';
-
-import { Origin, type Filter, type Selection, type User } from '@annotorious/core';
-
+import { Origin } from '@annotorious/core';
+import type { Filter, Lifecycle, Selection, User } from '@annotorious/core';
 import type { TextAnnotatorState } from './state';
 import type { TextAnnotation, TextAnnotationTarget } from './model';
+import type { AnnotatingMode } from './TextAnnotator';
 import type { TextAnnotatorOptions } from './TextAnnotatorOptions';
 import {
   clonePointerEvent,
@@ -16,7 +16,8 @@ import {
   isMac,
   isRangeWhitespaceOrEmpty,
   trimRangeToContainer,
-  isNotAnnotatable
+  isNotAnnotatable,
+  mergeRanges
 } from './utils';
 
 const CLICK_TIMEOUT = 300;
@@ -33,9 +34,9 @@ const SELECTION_KEYS = [
 export const createSelectionHandler = (
   container: HTMLElement,
   state: TextAnnotatorState<TextAnnotation, unknown>,
+  lifecycle: Lifecycle<TextAnnotation, unknown>,
   options: TextAnnotatorOptions<TextAnnotation, unknown>
 ) => {
-
   const { store, selection } = state;
 
   let currentUser: User | undefined;
@@ -47,41 +48,91 @@ export const createSelectionHandler = (
     dismissOnNotAnnotatable = 'NEVER'
   } = options;
 
-  const setUser = (user?: User) => currentUser = user;
-
   let currentFilter: Filter | undefined;
 
-  const setFilter = (filter?: Filter) => currentFilter = filter;
+  let currentAnnotatingEnabled = annotatingEnabled;
+
+  let annotatingMode: AnnotatingMode = 'CREATE_NEW';
 
   let currentTarget: TextAnnotationTarget | undefined;
+
+  // Only used if allowModifierSelect === true or if
+  // annotatingMode === 'ADD_TO_CURRENT' | 'REPLACE_CURRENT'
+  let targetToModify: TextAnnotationTarget | undefined;
 
   let isLeftClick: boolean | undefined;
 
   let lastDownEvent: Selection['event'] | undefined;
-
-  let currentAnnotatingEnabled = annotatingEnabled;
 
   const setAnnotatingEnabled = (enabled: boolean) => {
     currentAnnotatingEnabled = enabled;
     onSelectionChange.clear();
 
     if (!enabled) {
+      targetToModify = undefined;
       currentTarget = undefined;
       isLeftClick = undefined;
       lastDownEvent = undefined;
     }
-  };
+  }
+
+  const setAnnotatingMode = (mode?: AnnotatingMode) => annotatingMode = mode || 'CREATE_NEW';
+
+  const setFilter = (filter?: Filter) => currentFilter = filter;
+
+  const setUser = (user?: User) => currentUser = user;
+
+  const isAddToCurrentSelect = (evt: Event) => {
+    if (annotatingMode === 'ADD_TO_CURRENT')
+      return true;
+
+    if (options.allowModifierSelect) {
+      const asPtr = evt as PointerEvent;
+      return isMac ? asPtr.metaKey : asPtr.ctrlKey;
+    } else {
+      return false;
+    }
+  }
 
   const onSelectStart = () => {
     if (!currentAnnotatingEnabled) return;
 
     if (isLeftClick === false) return;
 
+    const { selected } = selection;
+
+    // Will this selection modify an existing annotation?
+    const isModifyExisting = (
+      isAddToCurrentSelect(lastDownEvent) || annotatingMode === 'REPLACE_CURRENT'
+    ) && selected.length === 1
+      && selected[0].editable;
+
+    if (isModifyExisting) {
+      const existing = store.getAnnotation(selected[0].id);
+
+      if (existing?.target) {
+        targetToModify = existing.target;
+
+        currentTarget = {
+          annotation: existing.id,
+          selector: [],
+          created: targetToModify.created,
+          creator: targetToModify.creator,
+          updated: new Date(),
+          updatedBy: currentUser
+        };
+
+        return;
+      }
+    }
+
+    targetToModify = undefined;
+
     currentTarget = {
       annotation: uuidv4(),
       selector: [],
-      creator: currentUser,
-      created: new Date()
+      created: new Date(),
+      creator: currentUser
     };
   };
 
@@ -99,9 +150,7 @@ export const createSelectionHandler = (
      *
      * @see https://github.com/recogito/text-annotator-js/pull/164#issuecomment-2416961473
      */
-    if (!sel?.anchorNode) {
-      return;
-    }
+    if (!sel?.anchorNode) return;
 
     const selectionRanges =
       Array.from(Array(sel.rangeCount).keys()).map(idx => sel.getRangeAt(idx));
@@ -119,9 +168,10 @@ export const createSelectionHandler = (
     const timeDifference = evt.timeStamp - (lastDownEvent?.timeStamp || evt.timeStamp);
 
     /**
-     * The selection start needs to be emulated only for the pointer events!
-     * The keyboard ones are consistently fired on desktops
-     * and the `timeDifference` will always be <10ms. between the `keydown` and `selectionchange`
+     * The selection start needs to be emulated for some platforms, but only
+     * for the pointer events! (Keyboard events fire consistently on desktops
+     * and the `timeDifference` will always be <10ms between `keydown` and
+     * `selectionchange`)
      */
     if (lastDownEvent?.type === 'pointerdown') {
       if (timeDifference < 1000 && !currentTarget) {
@@ -134,28 +184,34 @@ export const createSelectionHandler = (
       }
     }
 
-    // Note: commenting out the line below. We should no longer do this. Why?
-    // Let's assume the user drags the selection from outside the annotatable area
-    // over the anntoatable area (intersection!). Then drags it out again
-    // (no intersection!), then in again (intersection). Because the
-    // currentTarget will have been cleared meanwhile, execution will stop.
-    //
-    // But we don't want this - instead, processing should continue as normal,
-    // and a new currentTarget should be computed when the user drags the
-    // selection into the annotatable area a second time.
+    /*
+     Let's assume the user drags the selection from outside the annotatable area
+     over the annotatable area (intersection!). Then drags it out again
+     (no intersection!), then in again (intersection). Because the
+     currentTarget will have been cleared, meanwhile, execution will stop.
 
-    // The selection isn't active -> bail out from selection change processing
-    // if (!currentTarget) return;
-    if (!currentTarget) onSelectStart();
+     But we don't want this - instead, processing should continue as normal,
+     and a new currentTarget should be computed when the user drags the
+     selection into the annotatable area a second time.
+    */
+    if (!currentTarget) {
+      onSelectStart();
+
+      // If the currentTarget is still missing -> bail out
+      if (!currentTarget) return;
+    }
 
     if (sel.isCollapsed) {
       /**
-       * The selection range got collapsed during the selecting process.
-       * The previously created annotation isn't relevant anymore and can be discarded
+       * The selection range got collapsed during the selecting process. Unless this
+       * is intentional (CTRL + select, modifying existing annotations), the previously
+       * created annotation isn't relevant anymore and can be discarded
        *
        * @see https://github.com/recogito/text-annotator-js/issues/139
        */
-      if (store.getAnnotation(currentTarget.annotation)) {
+      if (store.getAnnotation(currentTarget.annotation) && !(
+        isAddToCurrentSelect(lastDownEvent) || annotatingMode === 'REPLACE_CURRENT'
+      )) {
         selection.clear();
         store.deleteAnnotation(currentTarget.annotation);
       }
@@ -178,11 +234,33 @@ export const createSelectionHandler = (
 
     if (!hasChanged) return;
 
+    /**
+     * The annotatable ranges are:
+     * - the current annotatable ranges
+     * - the ranges of the existing annotatation IFF we are adding to the current
+     */
+    const combinedRanges = (isAddToCurrentSelect(lastDownEvent) && targetToModify) ? mergeRanges([
+      ...(targetToModify.selector.map(s => s.range)),
+      ...annotatableRanges
+    ]) : annotatableRanges;
+
     currentTarget = {
       ...currentTarget,
-      selector: annotatableRanges.map(r => rangeToSelector(r, container, offsetReferenceSelector)),
+      selector: combinedRanges.map(r => rangeToSelector(r, container, offsetReferenceSelector)),
       updated: new Date()
     };
+
+    /**
+     * If we're modifying (adding to/replacing) an existing annotation, we don't
+     * need to perform the steps below.
+     *
+     * - We don't want to clear the selection
+     * - We don't want to update the target until mouse-up
+     *
+     * CAVEAT: this won't work with keyboard selection yet. Ideally, we'd need an explicit
+     * "isKeyboardSelection" flag to handle this case correctly.
+     */
+    if (isAddToCurrentSelect(lastDownEvent) || annotatingMode === 'REPLACE_CURRENT') return;
 
     /**
      * During mouse selection on the desktop, the annotation won't usually exist while the selection is being edited.
@@ -191,7 +269,7 @@ export const createSelectionHandler = (
     if (store.getAnnotation(currentTarget.annotation)) {
       store.updateTarget(currentTarget, Origin.LOCAL);
     } else {
-      // Proper lifecycle management: clear the previous selection first...
+      // Proper lifecycle management: clear the previous selection first
       selection.clear();
     }
   }, 10);
@@ -249,8 +327,10 @@ export const createSelectionHandler = (
           currentIds.size !== nextIds.length ||
           !nextIds.every(id => currentIds.has(id));
 
-        if (hasChanged)
+        if (hasChanged) {
+          lifecycle.emit('clickAnnotation', hovered);
           selection.userSelect(nextIds, lastUpEvent);
+        }
       } else {
         selection.clear();
       }
@@ -270,13 +350,13 @@ export const createSelectionHandler = (
         isNotAnnotatable(container, lastUpEvent.target as Node);
 
       /**
-       * Route to `clickSelect` if selection collapsed OR
-       * the click happened entirely over a not-annotatable element.
+       * Route to `clickSelect` if selection is collapsed OR the click happened
+       * entirely over a not-annotatable element.
        *
-       * The latter allows preventing re-selection of an existing
-       * annotation when a user clicks on not-annotatable controls.
-       * For example, a click on a `button` element doesn't make the
-       * selection collapse, but it still needs to be processed with `clickSelect`.
+       * The latter allows preventing re-selection of an existing annotation
+       * when a user clicks on not-annotatable controls. For example, a click
+       * on a `button` element doesn't make the selection collapse, but it still
+       * needs to be processed with `clickSelect`.
        */
       if (sel?.isCollapsed || (isDownOnNotAnnotatable && isUpOnNotAnnotatable)) {
         currentTarget = undefined;
@@ -328,6 +408,7 @@ export const createSelectionHandler = (
     if (!currentTarget || currentTarget.selector.length === 0) {
       onSelectionChange(evt);
     }
+
     /**
      * The selection couldn't be initiated - might span over a not-annotatable element.
      */
@@ -418,17 +499,17 @@ export const createSelectionHandler = (
         bodies: [],
         target: currentTarget
       });
-      return;
-    }
+    } else {
+      const { target: { updated: existingTargetUpdated } } = existingAnnotation;
+      const { updated: currentTargetUpdated } = currentTarget;
 
-    const { target: { updated: existingTargetUpdated } } = existingAnnotation;
-    const { updated: currentTargetUpdated } = currentTarget;
-    if (
-      !existingTargetUpdated ||
-      !currentTargetUpdated ||
-      existingTargetUpdated < currentTargetUpdated
-    ) {
-      store.updateTarget(currentTarget);
+      if (
+        !existingTargetUpdated ||
+        !currentTargetUpdated ||
+        existingTargetUpdated < currentTargetUpdated
+      ) {
+        store.updateTarget(currentTarget);
+      }
     }
   };
 
@@ -442,6 +523,7 @@ export const createSelectionHandler = (
 
   const destroy = () => {
     currentTarget = undefined;
+    targetToModify = undefined;
     isLeftClick = undefined;
     lastDownEvent = undefined;
 
@@ -462,7 +544,8 @@ export const createSelectionHandler = (
     destroy,
     setFilter,
     setUser,
-    setAnnotatingEnabled
+    setAnnotatingEnabled,
+    setAnnotatingMode
   }
 
 };

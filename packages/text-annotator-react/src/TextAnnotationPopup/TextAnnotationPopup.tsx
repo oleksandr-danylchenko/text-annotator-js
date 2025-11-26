@@ -1,4 +1,4 @@
-import React, { FC, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import debounce from 'debounce';
 import { useAnnotator, useSelection } from '@annotorious/react';
 import {
@@ -53,6 +53,8 @@ interface TextAnnotationPopupProps {
 export interface TextAnnotationPopupContentProps<T extends TextAnnotation = TextAnnotation> {
 
   annotation: T;
+
+  selected: { annotation: T; editable?: boolean; }[];
 
   editable?: boolean;
 
@@ -178,15 +180,7 @@ export const TextAnnotationPopup = (props: TextAnnotationPopupProps) => {
     };
   }, [update, props.asPortal]);
 
-  // Don't shift focus to the floating element if selected via keyboard or on mobile.
-  const initialFocus = useMemo(() => {
-    return (
-      props.autoFocus === false || 
-      event?.type === 'keyup' || 
-      event?.type === 'contextmenu' || 
-      isMobile()
-    ) ? -1 : 0;
-  }, [props.autoFocus, event]);
+  const onClose = () => r?.cancelSelected();
 
   /**
    * Announce the navigation hint only on the keyboard selection,
@@ -212,8 +206,9 @@ export const TextAnnotationPopup = (props: TextAnnotationPopupProps) => {
           ref={refs.setFloating}
           style={floatingStyles}>
           {props.popup({
-            annotation: selected[0].annotation,
+            annotation: selected[0].annotation, // for backwards compatibility
             editable: selected[0].editable,
+            selected,
             event
           })}
 {props.arrow && (

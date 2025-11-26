@@ -1,10 +1,10 @@
 import { JSX, ReactNode, useContext, useEffect, useRef } from 'react';
 import { AnnotoriousContext, Filter } from '@annotorious/react';
 import type { FormatAdapter } from '@annotorious/core';
-import type { HighlightStyleExpression, TextAnnotation, TextAnnotatorOptions } from '@soomo/text-annotator';
+import type { AnnotatingMode, HighlightStyleExpression, TextAnnotation, TextAnnotatorOptions } from '@soomo/text-annotator';
 import { createTextAnnotator } from '@soomo/text-annotator';
 
-import '@soomo/text-annotator/dist/text-annotator.css';
+import '@soomo/text-annotator/text-annotator.css';
 
 export interface TextAnnotatorProps<I extends TextAnnotation = TextAnnotation, E extends unknown = TextAnnotation> extends Omit<TextAnnotatorOptions<I, E>, 'adapter'> {
 
@@ -12,9 +12,9 @@ export interface TextAnnotatorProps<I extends TextAnnotation = TextAnnotation, E
 
   adapter?: FormatAdapter<I, E> | ((container: HTMLElement) => FormatAdapter<I, E>) | null;
 
-  filter?: Filter<I>;
+  annotatingMode?: AnnotatingMode;
 
-  style?: HighlightStyleExpression;
+  filter?: Filter<I>;
 
   className?: string;
 
@@ -27,7 +27,8 @@ export const TextAnnotator = <I extends TextAnnotation = TextAnnotation, E exten
   const el = useRef<HTMLDivElement>(null);
 
   const { className, children, ...opts } = props;
-  const { style, filter, user, annotatingEnabled, userSelectAction } = opts;
+
+  const { style, filter, user, annotatingEnabled, userSelectAction, annotatingMode } = opts;
 
   const { anno, setAnno } = useContext(AnnotoriousContext);
 
@@ -53,6 +54,8 @@ export const TextAnnotator = <I extends TextAnnotation = TextAnnotation, E exten
   useEffect(() => anno?.setUser(user), [anno, user]);
 
   useEffect(() => anno?.setAnnotatingEnabled(annotatingEnabled), [anno, annotatingEnabled]);
+
+  useEffect(() => anno?.setAnnotatingMode(annotatingMode), [anno, annotatingMode]);
 
   return (
     <div ref={el} className={`r6o-annotatable no-focus-outline ${className}`}>

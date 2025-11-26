@@ -9,7 +9,7 @@ export default defineConfig({
     open: '/test/index.html'
   },
   build: {
-    "emptyOutDir": false,
+    emptyOutDir: false,
     sourcemap: true,
     lib: {
       entry: './src/index.ts',

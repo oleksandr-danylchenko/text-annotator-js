@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>RecogitoJS 3</title>
+    <title>Recogito Text Annotator</title>
     <style>
       *, *:before, *:after {
         box-sizing: border-box;
@@ -100,6 +100,7 @@
     <div id="buttons">
       <button id="filter">Toggle Filter</button>
       <button id="fake-presence">Fake Presence</button>
+      <button id="toggle-annotating-mode">Mode: CREATE_NEW</button>
     </div>
 
     <div id="container">
@@ -334,18 +335,17 @@
 
         const style = ((annotation, state, z) =>
           ({
-            // fill: state.hovered ? '#ff0000' : undefined,
-            fill: 'oklch(0.72 0.18 237.15 / 0.25)',
-            // fillOpacity: state.selected ? 0.9 : 0.2,
-            // underlineColor: '#9b3c06',
+            fill: '#00b1ff',
+            fillOpacity: (state.hovered || state.selected) ? 0.5 : 0.15,
             underlineColor: 'oklch(0.72 0.19 232.06)',
             underlineOffset: (z * 3.5) || 0,
             underlineThickness: 2
           }));
 
         var r = createTextAnnotator(contentContainer, {
-          // adapter: W3CTextFormat('https://www.gutenberg.org', contentContainer),
-          renderer: 'SPANS',
+          adapter: W3CTextFormat('https://www.gutenberg.org', contentContainer),
+          allowModifierSelect: true,
+          // renderer: 'CSS_HIGHLIGHTS',
           // annotatingEnabled: false,
           // selectionMode: 'all',
           style
@@ -353,7 +353,7 @@
 
         var annotations;
 
-        // r.loadAnnotations('annotations.w3c.json').then(a => annotations = a);
+        r.loadAnnotations('annotations.w3c.json').then(a => annotations = a);
 
         r.on('createAnnotation', annotation => {
           console.log('createAnnotation', annotation);
@@ -367,6 +367,10 @@
           console.log('deleteAnnotation', annotation);
         });
 
+        r.on('clickAnnotation', (annotations) => {
+          console.log('clicked', annotations);
+        })
+
         r.on('selectionChanged', (annotations) => {
           console.log('selectionChanged', annotations);
         });
@@ -377,15 +381,15 @@
 
         var filterActive = false;
 
-        var toggleButton = document.getElementById('filter');
-        var toggleButtonLabel = toggleButton.innerText;
+        var toggleFilterButton = document.getElementById('filter');
+        var toggleFilterButtonLabel = toggleFilterButton.innerText;
 
-        toggleButton.addEventListener('click', function () {
+        toggleFilterButton.addEventListener('click', function () {
           if (filterActive) {
             r.setFilter(undefined);
 
             filterActive = false;
-            toggleButton.innerText = `${toggleButtonLabel} on`;
+            toggleFilterButton.innerText = `${toggleFilterButtonLabel} on`;
           } else {
             // Dummy filter - just filter randomly
             r.setFilter(a => {
@@ -396,7 +400,7 @@
             });
 
             filterActive = true;
-            toggleButton.innerText = `${toggleButtonLabel} off`;
+            toggleFilterButton.innerText = `${toggleFilterButtonLabel} off`;
           }
         });
 
@@ -422,7 +426,6 @@
         };
 
         var presenceButton = document.getElementById('fake-presence');
-
         presenceButton.addEventListener('click', function () {
           if (remoteSelection) {
             remoteSelection = undefined;
@@ -438,6 +441,18 @@
               callback(fakeCollaborator, [remoteSelection]);
             });
           }
+        });
+
+        var annotatingMode = 'CREATE_NEW';
+        var annotatingModeButton = document.getElementById('toggle-annotating-mode');
+        annotatingModeButton.addEventListener('click', () => {
+          annotatingMode = 
+            annotatingMode === 'CREATE_NEW' ? 'ADD_TO_CURRENT' : 
+            annotatingMode === 'ADD_TO_CURRENT' ? 'REPLACE_CURRENT' : 
+            'CREATE_NEW';
+
+          annotatingModeButton.innerHTML =  `Mode: ${annotatingMode}`;
+          r.setAnnotatingMode(annotatingMode);
         });
 
         // Make global so we can manipulate from the console

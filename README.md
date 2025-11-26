@@ -1,8 +1,8 @@
 # Recogito Text Annotator
 
-A JavaScript library for adding interactive text annotation functionality to web applications.
+A JavaScript library for adding **interactive text annotation functionality** to web applications.
 
-Also available: [React wrapper](packages/text-annotator-react) | [TEI/XML extension](packages/extension-tei) | [Recogito PDF Annotator](https://github.com/recogito/pdf-annotator-js) 
+Also available: [React wrapper](packages/text-annotator-react) | [TEI/XML extension](packages/text-annotator-tei) | [Recogito PDF Annotator](https://github.com/recogito/pdf-annotator-js) 
 
 ![Animated screenshot of the Recogito Text Annotator](/animated-screenshot.gif "Animated screenshot of the Recogito Text Annotator")
 
@@ -36,117 +36,138 @@ const anno = createTextAnnotator(element, options);
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `annotatingEnabled` | `boolean` | `true` | Enable or disable interactive creation of new annotations. |
-| `dismissOnNotAnnotatable` | `'NEVER' \| 'ALWAYS' \| function` | `'NEVER'` | Controls whether the current selection is dismissed when clicking outside of annotatable content. |
-| `selectionMode` | `'shortest' \| 'all'` | `'shortest'` | When the user selects overlapping annotations: select all or only the shortest. |
-| `style` | `HighlightStyleExpression` | `undefined` | Custom styling function for highlights. |
-| `user` | `User` | anonymous guest | Current user information, automatically added to created or updated annotations. |
+| `allowModifierSelect` | `boolean` | `false` | Allows users to extend an existing annotation by holding `Ctrl` (`Cmd` on Mac) while selecting. |
+| `annotatingEnabled` | `boolean` | `true` | Enable or disable creation of new annotations. |
+| `dismissOnNotAnnotatable` | `'NEVER' \| 'ALWAYS' \| function` | `'NEVER'` | Controls whether the currently selected annotation is un-selected when clicking outside the annotatable area. |
+| `mergeHighlights` | `object` | `undefined` | Merge adjacent highlights. Options: `horizontalTolerance` and `verticalTolerance` (pixels) |
+| `selectionMode` | `'shortest' \| 'all'` | `'shortest'` | When selecting overlapping annotations: select all or only the shortest. |
+| `style` | `HighlightStyleExpression` | `undefined` | Custom highlight styling function. |
+| `user` | `User` | anonymous guest | Current user info, automatically added to new or updated annotations. |
+| `userSelectAction` | `UserSelectActionExpression` | `SELECT` | Behavior when the user selects an annotation (see below) |
 
 ## Annotator API
 
 ### Methods
 
-#### `getAnnotations(): TextAnnotation[]`
-Returns all annotations.
-
-```js
-const annotations = anno.getAnnotations();
-```
-
-#### `getAnnotationById(id: string): TextAnnotation`
-Returns the annotations with the given ID.
-
-```js
-const annotation = anno.getAnnotationById('annotation-id');
-```
-
-#### `setAnnotations(annotations: TextAnnotation[], replace = true): void`
-Bulk-adds annotations. If `replace` is `true` (default), all existing annotations are removed first. If `false`, the new annotations are appended to existing ones.
-
-```js
-anno.setAnnotations(annotations);
-```
-
-#### `loadAnnotations(url: string, replace = true): Promise<TextAnnotation[]>`
-Loads annotations from a URL.
-
-```js
-await anno.loadAnnotations('/annotations.json');
-```
-
-#### `addAnnotation(annotation: TextAnnotation): void`
-Adds a single annotation programmatically.
+#### `addAnnotation(annotation)`
+Add a single annotation programmatically.
 
 ```js
 anno.addAnnotation(annotation);
 ```
 
-#### `updateAnnotation(updated: TextAnnotation): void`
-Updates an existing annotation. (The original annotation with the same ID will be replaced.)
-
-```js
-anno.updateAnnotation(updated);
-```
-
-#### `removeAnnotation(annotationOrId: TextAnnotation | string): void`
-Removes an annotation by object or ID.
-
-```js
-anno.removeAnnotation('annotation-id');
-```
-
-#### `clearAnnotations(): void`
-Removes all annotations.
-
-```js
-anno.clearAnnotations();
-```
-
-#### `getSelected(): TextAnnotation[]`
-Returns currently selected annotations.
-
-```js
-const selected = anno.getSelected();
-```
-
-#### `setSelected(annotationOrId?: string | string[]): void`
-Programmatically select annotation(s). Passing `undefined` or no argument will clear selection.
-
-```js
-anno.setSelected('annotation-id');
-anno.setSelected(['id-1', 'id-2']);
-```
-
-#### `cancelSelected(): void`
+#### `cancelSelected()`
 Programmatically cancel the current selection.
 
 ```js
 anno.cancelSelected();
 ```
 
-#### `scrollIntoView(annotationOrId: TextAnnotation | string): boolean`
-Scrolls the annotation into view. Returns `true` if successful, `false` if annotation is not currently rendered.
+#### `canRedo()` / `canUndo()`
+Test if there are any re- or undoable user actions in the undo stack.
 
 ```js
-anno.scrollIntoView('annotation-id');
+const canRedo = anno.canRedo();
 ```
 
-#### `getUser(): User`
-Returns the current user.
+#### `clearAnnotations()`
+Remove all annotations.
+
+```js
+anno.clearAnnotations();
+```
+
+#### `destroy()`
+Destroy the annotator instance and clean up all event listeners.
+
+```js
+anno.destroy();
+```
+
+#### `getAnnotationById(id)`
+Retrieve a specific annotation.
+
+```js
+const annotation = anno.getAnnotationById('annotation-id');
+```
+
+#### `getAnnotations()`
+Return all annotations.
+
+```js
+const annotations = anno.getAnnotations();
+```
+
+#### `getSelected()`
+Return currently selected annotations.
+
+```js
+const selected = anno.getSelected();
+```
+
+#### `getUser()`
+Return the current user.
 
 ```js
 const user = anno.getUser();
 ```
 
-#### `setUser(user: User): void`
-Sets the current user.
+#### `loadAnnotations(url, replace = true)`
+Load annotations from a URL.
 
 ```js
-anno.setUser({ id: 'new-user@example.com', name: 'John' });
+await anno.loadAnnotations('/annotations.json');
 ```
 
-#### `setFilter(filter?: Filter): void`
-Applies a filter function to control which annotations are displayed.
+#### `redo()` / `undo()`
+Programmatically redo or undo the last user edit.
+
+```js
+anno.undo();
+anno.redo();
+```
+
+#### `removeAnnotation(annotationOrId)`
+Delete an annotation by ID or object.
+
+```js
+anno.removeAnnotation('annotation-id');
+```
+
+#### `scrollIntoView(annotationOrId)`
+Scroll the annotation into view. Returns `true` if successful, `false` if annotation is not currently rendered.
+
+```js
+anno.scrollIntoView('annotation-id');
+```
+
+#### `setAnnotatingEnabled(enabled)`
+Enable or disable annotation creation.
+
+```js
+anno.setAnnotatingEnabled(false);
+```
+
+#### `setAnnotatingMode(mode)`
+Configure the annotation mode:
+
+- `CREATE_NEW` (default): each user selection creates a new annotation.
+- `ADD_TO_CURRENT`: the user selection extends the currently selected annotation's range, if any.
+- `REPLACE_CURRENT`: the user selection replaces the currently selected annotations' range, if any.
+
+```js
+anno.setAnnotatingMode('ADD_TO_CURRENT');
+```
+
+#### `setAnnotations(annotations, replace = true)`
+Bulk-add annotations. If `replace` is `true` (default), all existing annotations are deleted first. If `false`, the new annotations are appended to existing ones.
+
+```js
+anno.setAnnotations(annotations);
+```
+
+#### `setFilter(filter)`
+Apply a filter function to control which annotations are displayed.
 
 ```js
 anno.setFilter(annotation => 
@@ -154,44 +175,59 @@ anno.setFilter(annotation =>
 );
 ```
 
-#### `setStyle(style?: HighlightStyleExpression): void`
-Updates the highlighting style function.
+#### `setSelected(idOrIds)`
+Programmatically select annotation(s). Passing `undefined` or no argument will clear selection.
 
 ```js
-anno.setStyle(annotation => ({
-  fill: annotation.bodies[0]?.purpose === 'tagging' ? 'yellow' : 'lightblue',
+anno.setSelected('annotation-id');
+anno.setSelected(['id-1', 'id-2']);
+```
+
+#### `setStyle(style)`
+Change the highlighting style function or set a static style - [see details below](#annotation-styling).
+
+```js
+anno.setStyle({
+  fill: 'yellow',
   fillOpacity: 0.25
+});
+
+anno.setStyle((annotation, state) => ({
+  fill: annotation.bodies[0]?.purpose === 'tagging' ? 'yellow' : 'lightblue',
+  fillOpacity: state.hovered ? 0.5 : 0.25
 }));
 ```
 
-#### `setVisible(visible: boolean): void`
-Shows or hides all annotations.
+#### `setUser(user)`
+Set the current user.
+
+```js
+anno.setUser({ id: 'new-user@example.com', name: 'John' });
+```
+
+#### `setUserSelectAction(action)`
+Change the current `userSelectAction`, which determines what happens when the user selects an annotation interactively. Can be a `UserSelectAction`, or a function that receives the annotation as input and returns a `UserSelectAction`.
+
+- **SELECT** (default): The annotation will be selected and the `selectionChanged` event will be triggered.
+- **NONE**: the annotation is inert, clicking has no effect.
+
+```js
+anno.setUserSelectAction('NONE');
+anno.setUserSelectAction(annotation => annotation.bodies.length > 0 ? 'SELECT' : 'NONE');
+```
+
+#### `setVisible(visible)`
+Show or hide all annotations.
 
 ```js
 anno.setVisible(false); 
 ```
 
-#### `undo(): void`
-
-Programmatically undo the last user edit.
-
-```js
-anno.undo();
-```
-
-#### `redo(): void`
-
-Programmatically redo the last undone user edit.
+#### `updateAnnotation(updated)`
+Update an existing annotation.
 
 ```js
-anno.redo();
-```
-
-#### `destroy(): void`
-Destroys the annotator instance and cleans up all event listeners.
-
-```js
-anno.destroy();
+anno.updateAnnotation(updated);
 ```
 
 ### Events
@@ -240,6 +276,15 @@ anno.on('selectionChanged', annotations => {
 });
 ```
 
+#### `viewportIntersect`
+Fired when annotations enter or leave the visible area.
+
+```js
+anno.on('viewportIntersect', annotations => {
+  console.log('Visible:', annotations);
+});
+```
+
 **Remove event listeners:**
 ```js
 const handler = annotation => console.log(annotation);
@@ -247,7 +292,7 @@ anno.on('createAnnotation', handler);
 anno.off('createAnnotation', handler);
 ```
 
-## Annotation Format
+## Annotation Data Model
 
 The Text Annotator data model aligns closely with the [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/), but with a few key differences to optimize for performance and ease of use. Every annotation in Annotorious is represented by a JavaScript object with the following structure:
 

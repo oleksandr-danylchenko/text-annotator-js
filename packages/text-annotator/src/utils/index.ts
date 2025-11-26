@@ -1,5 +1,6 @@
 export * from './cancelSingleClickEvents';
 export * from './cloneEvents';
+export * from './debounce';
 export * from './device';
 export * from './programmaticallyFocusable';
 export * from './getHighlightClientRects';
@@ -8,6 +9,7 @@ export * from './isNotAnnotatable';
 export * from './isRevived';
 export * from './isWhitespaceOrEmpty';
 export * from './mergeClientRects';
+export * from './mergeRanges';
 export * from './rangeToSelector';
 export * from './rectsToBounds';
 export * from './reviveAnnotation';

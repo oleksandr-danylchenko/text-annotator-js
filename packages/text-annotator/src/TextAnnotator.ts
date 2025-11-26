@@ -1,25 +1,14 @@
-import {
-  createAnonymousGuest,
-  createLifecycleObserver,
-  createBaseAnnotator,
-  createUndoStack,
-  type Filter,
-} from '@annotorious/core';
-import type { Annotator, User, PresenceProvider } from '@annotorious/core';
-
-import {
-  createCanvasRenderer,
-  createHighlightsRenderer,
-  createSpansRenderer,
-  type HighlightStyleExpression
-} from './highlight';
-import { createPresencePainter } from './presence';
+import { createAnonymousGuest, createLifecycleObserver, createBaseAnnotator, createUndoStack } from '@annotorious/core';
+import type { Annotator, Filter, User, PresenceProvider } from '@annotorious/core';
 import { scrollIntoView } from './api';
-import { type TextAnnotationStore, type TextAnnotatorState, createTextAnnotatorState } from './state';
+import { createCanvasRenderer, createHighlightsRenderer, createSpansRenderer } from './highlight';
+import type { HighlightStyleExpression, RendererFactory } from './highlight';
 import type { TextAnnotation } from './model';
+import { createPresencePainter } from './presence';
+import { type TextAnnotationStore, type TextAnnotatorState, createTextAnnotatorState } from './state';
 import { cancelSingleClickEvents, programmaticallyFocusable } from './utils';
-import { fillDefaults, type RendererType, type TextAnnotatorOptions } from './TextAnnotatorOptions';
 import { createSelectionHandler } from './SelectionHandler';
+import { fillDefaults, type RendererType, type TextAnnotatorOptions } from './TextAnnotatorOptions';
 
 import './TextAnnotator.css';
 
@@ -36,11 +25,15 @@ export interface TextAnnotator<I extends TextAnnotation = TextAnnotation, E exte
   // Returns true if successful (or false if the annotation is not currently rendered)
   scrollIntoView(annotationOrId: I | string, scrollParentOrId?: string | Element): boolean;
 
-  setAnnotatingEnabled: (enabled: boolean) => void;
+  setAnnotatingEnabled(enabled?: boolean): void;
+
+  setAnnotatingMode(mode?: AnnotatingMode): void;
 
   state: TextAnnotatorState<I, E>;
 
 }
+
+export type AnnotatingMode = 'CREATE_NEW' | 'ADD_TO_CURRENT' | 'REPLACE_CURRENT';
 
 export const createTextAnnotator = <I extends TextAnnotation = TextAnnotation, E extends unknown = TextAnnotation>(
   container: HTMLElement,
@@ -69,28 +62,34 @@ export const createTextAnnotator = <I extends TextAnnotation = TextAnnotation, E
 
   let currentUser: User = opts.user;
 
-  // Use selected renderer, or fall back to default. If CSS_HIGHLIGHT is
-  // requested, check if CSS Custom Highlights are supported, and fall
-  // back to default renderer if not.
-  const useRenderer: RendererType =
-    opts.renderer === 'CSS_HIGHLIGHTS'
-      ? Boolean(CSS.highlights) ? 'CSS_HIGHLIGHTS' : USE_DEFAULT_RENDERER
-      : opts.renderer || USE_DEFAULT_RENDERER;
+  // Use the selected built-in renderer, or fall back to default. If 
+  // CSS_HIGHLIGHT is selected, check if CSS Custom Highlights are 
+  // supported, and fall back to default renderer if not.
+  const useBuiltInRenderer: RendererType | null =
+    typeof opts.renderer !== 'function' ? 
+      opts.renderer === 'CSS_HIGHLIGHTS'
+        ? Boolean(CSS.highlights) ? 'CSS_HIGHLIGHTS' : USE_DEFAULT_RENDERER
+        : opts.renderer || USE_DEFAULT_RENDERER :
+    null;
 
   const highlightRenderer =
-    useRenderer === 'SPANS' ? createSpansRenderer(container, state, viewport) :
-      useRenderer === 'CSS_HIGHLIGHTS' ? createHighlightsRenderer(container, state, viewport) :
-        useRenderer === 'CANVAS' ? createCanvasRenderer(container, state, viewport) : undefined;
+    useBuiltInRenderer === null ? (opts.renderer as RendererFactory)(container, state, viewport) :
+    useBuiltInRenderer === 'SPANS' ? createSpansRenderer(container, state, viewport) :
+    useBuiltInRenderer === 'CSS_HIGHLIGHTS' ? createHighlightsRenderer(container, state, viewport) :
+    useBuiltInRenderer === 'CANVAS' ? createCanvasRenderer(container, state, viewport) : undefined;
 
   if (!highlightRenderer)
-    throw `Unknown renderer implementation: ${useRenderer}`;
+    throw `Unknown renderer implementation: ${opts.renderer}`;
 
-  console.debug(`Using ${useRenderer} renderer`);
+  if (useBuiltInRenderer)
+    console.debug(`Using ${useBuiltInRenderer} renderer`);
+  else 
+    console.debug('Using custom renderer implementation');
 
   if (opts.style)
     highlightRenderer.setStyle(opts.style);
 
-  const selectionHandler = createSelectionHandler(container, state, opts);
+  const selectionHandler = createSelectionHandler(container, state, lifecycle, opts);
   selectionHandler.setUser(currentUser);
 
   /*************************/
@@ -106,7 +105,11 @@ export const createTextAnnotator = <I extends TextAnnotation = TextAnnotation, E
     selectionHandler.setAnnotatingEnabled(
       enabled === undefined ? true : enabled
     );
-  };
+  }
+
+  const setAnnotatingMode = (mode?: AnnotatingMode) => {
+    selectionHandler.setAnnotatingMode(mode)
+  }
 
   const setFilter = (filter?: Filter<I>) => {
     highlightRenderer.setFilter(filter);
@@ -147,6 +150,7 @@ export const createTextAnnotator = <I extends TextAnnotation = TextAnnotation, E
     element: container,
     getUser,
     setAnnotatingEnabled,
+    setAnnotatingMode,
     setFilter,
     setStyle: highlightRenderer.setStyle.bind(highlightRenderer),
     redraw: highlightRenderer.redraw.bind(highlightRenderer),

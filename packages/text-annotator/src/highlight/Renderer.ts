@@ -1,12 +1,20 @@
-import debounce from 'debounce';
-
-import type { Filter, ViewportState } from '@annotorious/core';
-
+import { UserSelectAction, type Filter, type ViewportState } from '@annotorious/core';
+import type { TextAnnotation } from '../model';
 import type { TextAnnotatorState } from '../state';
 import { type ViewportBounds, getViewportBounds, trackViewport } from './viewport';
 import type { HighlightPainter } from './HighlightPainter';
 import type { Highlight } from './Highlight';
 import type { HighlightStyleExpression } from './HighlightStyle';
+// Note that the debounce npm package has the same issue as below under
+// some circumstances:
+// https://github.com/agentcooper/react-pdf-highlighter/issues/276
+import { debounce } from '../utils';
+
+export type RendererFactory = (
+  container: HTMLElement, 
+  state: TextAnnotatorState<TextAnnotation, unknown>,
+  viewport: ViewportState
+) => Renderer;
 
 export interface RendererImplementation {
 
@@ -62,11 +70,13 @@ export const createBaseRenderer = <T extends TextAnnotatorState = TextAnnotatorS
 
   const onDraw = trackViewport(viewport);
 
-  const onPointerMove = debounce((event: PointerEvent) => {
+  const onPointerMove = (event: PointerEvent) => {
     const {x, y} = container.getBoundingClientRect();
 
+    // TODO this may be a bit of an edge case... but ideally we'd retrieve the whole 
+    // stack of annotations, and then evaluate if ANY of them is clickable.
     const hit = store.getAt(event.clientX - x, event.clientY - y, false, currentFilter);
-    if (hit) {
+    if (hit && state.selection.evalSelectAction(hit) !== UserSelectAction.NONE) {
       if (hover.current !== hit.id) {
         container.classList.add('hovered');
         hover.set(hit.id);
@@ -77,7 +87,7 @@ export const createBaseRenderer = <T extends TextAnnotatorState = TextAnnotatorS
         hover.set(null);
       }
     }
-  }, 10);
+  }
 
   container.addEventListener('pointermove', onPointerMove);
 
@@ -182,7 +192,7 @@ export const createBaseRenderer = <T extends TextAnnotatorState = TextAnnotatorS
 
     document.removeEventListener('scroll', onScroll);
 
-    onResize.clear();
+    // onResize.clear();
     window.removeEventListener('resize', onResize);
     resizeObserver.disconnect();
 

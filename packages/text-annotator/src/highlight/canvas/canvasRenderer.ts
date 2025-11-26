@@ -7,7 +7,7 @@ import type { ViewportBounds } from '../viewport';
 import type { HighlightStyle } from '../HighlightStyle';
 import { DEFAULT_SELECTED_STYLE, DEFAULT_STYLE, type HighlightStyleExpression } from '../HighlightStyle';
 import type { HighlightPainter } from '../HighlightPainter';
-import { createBaseRenderer, type RendererImplementation } from '../baseRenderer';
+import { createBaseRenderer, type RendererImplementation } from '../Renderer';
 import type { Highlight } from '../Highlight';
 import type { TextAnnotation } from 'src/model';
 
@@ -33,7 +33,11 @@ const resetCanvas = (canvas: HTMLCanvasElement, highres?: boolean) => {
   }
 }
 
+/**
+ * @deprecated Canvas renderer is deprecated and will be removed in the next major release. Please use 'span' renderer instead.
+ */
 const createRenderer = (container: HTMLElement): RendererImplementation => {
+  console.warn('WARNING! Canvas renderer is deprecated and will be removed in the next major release. Please use the default "SPANS" renderer instead.');
 
   container.classList.add('r6o-annotatable');
 
