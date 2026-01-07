@@ -17,7 +17,8 @@ import {
   isRangeWhitespaceOrEmpty,
   trimRangeToContainer,
   isNotAnnotatable,
-  mergeRanges
+  mergeRanges,
+  isRangeAnnotatable
 } from './utils';
 
 const CLICK_TIMEOUT = 300;
@@ -160,7 +161,7 @@ export const createSelectionHandler = (
      * another element in a not-annotatable area. A rare case in practice.
      * But rich text editors like Quill will do it!
      */
-    if (!selectionRanges.some(r => r.intersectsNode(container))) {
+    if (selectionRanges.every(r => !isRangeAnnotatable(container, r))) {
       currentTarget = undefined;
       return;
     }
