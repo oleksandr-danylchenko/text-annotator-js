@@ -478,7 +478,7 @@ export const createSelectionHandler = (
   const handleArrowKeyPress = (evt: KeyboardEvent) => {
     if (
       evt.repeat ||
-      evt.target !== container && evt.target !== document.body
+      evt.target instanceof Node && isNotAnnotatable(container, evt.target) && evt.target !== document.body
     ) {
       return;
     }
