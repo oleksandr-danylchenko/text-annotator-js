@@ -417,12 +417,33 @@ export const createSelectionHandler = (
     selection.userSelect(currentTarget.annotation, clonePointerEvent(evt));
   }
 
+  /**
+   * Handles the completion of keyboard-based text selection when the Shift key is released.
+   *
+   * When a non-collapsed selection exists upon Shift key release, this handler persists
+   * the annotation to the store and programmatically selects it.
+   *
+   * Event handling is restricted to:
+   * - Annotatable elements within the container
+   * - The document body (which receives focus during Tab navigation in Firefox and Safari)
+   *
+   * @see https://github.com/recogito/text-annotator-js/issues/247
+   */
   const onKeyup = (evt: KeyboardEvent) => {
     if (!currentAnnotatingEnabled) return;
 
+    if (
+      evt.repeat ||
+      (
+        evt.target instanceof Node && isNotAnnotatable(container, evt.target) &&
+        evt.target !== document.body
+      )
+    ) {
+      return;
+    }
+
     if (evt.key === 'Shift' && currentTarget) {
       const sel = document.getSelection();
-
       if (!sel.isCollapsed) {
         upsertCurrentTarget();
         selection.userSelect(currentTarget.annotation, cloneKeyboardEvent(evt));
@@ -516,7 +537,7 @@ export const createSelectionHandler = (
   document.addEventListener('pointerup', onPointerUp);
   document.addEventListener('contextmenu', onContextMenu);
 
-  container.addEventListener('keyup', onKeyup);
+  document.addEventListener('keyup', onKeyup);
   container.addEventListener('selectstart', onSelectStart);
   document.addEventListener('selectionchange', onSelectionChange);
 
@@ -532,7 +553,7 @@ export const createSelectionHandler = (
     document.removeEventListener('pointerup', onPointerUp);
     document.removeEventListener('contextmenu', onContextMenu);
 
-    container.removeEventListener('keyup', onKeyup);
+    document.removeEventListener('keyup', onKeyup);
     container.removeEventListener('selectstart', onSelectStart);
     document.removeEventListener('selectionchange', onSelectionChange);
 
