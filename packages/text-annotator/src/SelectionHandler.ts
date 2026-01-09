@@ -489,17 +489,23 @@ export const createSelectionHandler = (
   });
 
   /**
-   * Free caret movement through the text resets the annotation selection.
+   * Clears the current annotation selection when the user moves the text caret using arrow keys.
    *
-   * It should be handled only on:
-   * - the annotatable `container`, where the text is.
-   * - the `body`, where the focus goes when user closes the popup,
-   *   or clicks the button that gets unmounted, e.g. "Close"
+   * This handler resets the selection state to ensure that free caret navigation through the text
+   * does not inadvertently maintain an active annotation selection.
+   *
+   * Event handling is restricted to:
+   * - Annotatable elements within the container
+   * - The document body (which receives focus when the popup is closed or when interacting
+   *   with elements that become unmounted, such as a "Close" button)
    */
   const handleArrowKeyPress = (evt: KeyboardEvent) => {
     if (
       evt.repeat ||
-      evt.target instanceof Node && isNotAnnotatable(container, evt.target) && evt.target !== document.body
+      (
+        evt.target instanceof Node && isNotAnnotatable(container, evt.target) &&
+        evt.target !== document.body
+      )
     ) {
       return;
     }
