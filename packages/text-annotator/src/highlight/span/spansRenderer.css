@@ -7,6 +7,8 @@
   mix-blend-mode: multiply;
   pointer-events: none;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none; /* Safari doesn't support regular `user-select` */
   z-index: 1;
 }
 
