@@ -1,6 +1,6 @@
 {
   "name": "@soomo/text-annotator",
-  "version": "3.4.13-staging.0",
+  "version": "3.4.14-staging.0",
   "description": "A JavaScript text annotation library",
   "author": "Rainer Simon",
   "license": "BSD-3-Clause",
