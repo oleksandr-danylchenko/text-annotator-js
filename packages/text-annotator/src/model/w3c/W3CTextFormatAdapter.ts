@@ -68,8 +68,11 @@ const parseW3CTextTargets = (annotation: W3CTextAnnotation) => {
       return s;
     }, {});
 
+    // Soomo-specific properties
     // @ts-expect-error: `outdated` is not part of the core `TextAnnotationTarget` type
     parsed.outdated ||= "outdated" in w3cTarget ? w3cTarget.outdated : undefined;
+    // @ts-expect-error: `migrationPending` is not part of the core `TextAnnotationTarget` type
+    parsed.migrationPending ||= "migrationPending" in w3cTarget ? w3cTarget.migrationPending : undefined;
 
     if (isTextSelector(selector)) {
       parsed.selector.push(
