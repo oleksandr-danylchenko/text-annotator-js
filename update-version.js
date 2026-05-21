@@ -7,7 +7,7 @@ const searchDirectories = (dir, fileList = []) => {
   files.forEach(file => {
     const filePath = path.join(dir, file);
     if (fs.statSync(filePath).isDirectory()) {
-      if (file !== 'node_modules')
+      if (file !== 'node_modules' && file !== 'plugins')
         fileList = searchDirectories(filePath, fileList);
     } else {
       if (file === 'package.json') {
@@ -26,10 +26,10 @@ const updateVersionNumbers = (filePath, newVersion) => {
 
     packageData.version = newVersion;
 
-    ['dependencies', 'peerDependencies'].forEach(depType => {
+    ['dependencies', 'peerDependencies', 'devDependencies'].forEach(depType => {
       if (packageData[depType]) {
           for (const dep in packageData[depType]) {
-              if (dep.startsWith('@recogito/text-')) {
+              if (dep.startsWith('@recogito/text-') || dep.startsWith('@recogito/pdf-') || dep.startsWith('@recogito/react-')) {
                   packageData[depType][dep] = newVersion;
               }
           }

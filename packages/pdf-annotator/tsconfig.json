@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "preserveSymlinks": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": false,
+    "sourceMap": true,
+    "target": "ESNext",
+    "verbatimModuleSyntax": true
+  },
+  "include": ["./src/**/*", "./test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
