@@ -50,7 +50,7 @@
     "@floating-ui/react": "^0.27.19",
     "@react-aria/live-announcer": "^3.3.4",
     "@soomo/text-annotator": "4.1.1-staging.0",
-    "@recogito/text-annotator-tei": "4.1.0",
+    "@recogito/text-annotator-tei": "4.1.1",
     "CETEIcean": "^1.9.5",
     "debounce": "^3.0.0",
     "dequal": "^2.0.3",
