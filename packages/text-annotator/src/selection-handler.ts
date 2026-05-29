@@ -153,9 +153,6 @@ export const createSelectionHandler = <T extends TextAnnotation>(
 
     const intersectingRanges = getIntersectingRanges();
 
-    // Drop any range that doesn't intersect the annotatable container at all before we attempt to trim it
-    const intersectingRanges = selectionRanges.filter(r => r.intersectsNode(container));
-
     // The selection should be captured only within the annotatable container
     const containedRanges = intersectingRanges.map(r => trimRangeToContainer(r, container));
 
