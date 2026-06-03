@@ -13,7 +13,7 @@ import {
 import type { HighlightStyleExpression, Renderer, RendererFactory } from './rendering';
 import { createSpansRenderer } from './rendering/renderer-spans';
 import { createCSSHighlightRenderer } from './rendering/renderer-css-highlight';
-import type { TextAnnotation, TextAnnotationLike } from './model';
+import type { RevivedTextAnnotationLike, TextAnnotation, TextAnnotationLike } from './model';
 import {
   type TextAnnotationStore,
   type TextAnnotatorState,
@@ -40,7 +40,7 @@ export interface TextAnnotator<I extends TextAnnotationLike = TextAnnotation, E 
 
   renderer: Renderer;
 
-  setStyle(style?: HighlightStyleExpression, id?: string): void;
+  setStyle(style?: HighlightStyleExpression<I>, id?: string): void;
 
   // Returns true if successful (or false if the annotation is not currently rendered)
   scrollIntoView(annotationOrId: I | string, scrollParentOrId?: string | Element): boolean;
@@ -70,7 +70,6 @@ export const createTextAnnotator = <I extends TextAnnotationLike = TextAnnotatio
     user: createAnonymousGuest()
   });
 
-  // @ts-ignore - temporary!
   const state: TextAnnotatorState<I, E> = createTextAnnotatorState<I, E>(container, opts);
 
   const { selection, viewport } = state;
@@ -79,7 +78,7 @@ export const createTextAnnotator = <I extends TextAnnotationLike = TextAnnotatio
 
   const undoStack = createUndoStack<I>(store as unknown as Store<I>);
 
-  // Not an ideal cast... but not sure what the best approach would be
+
   const lifecycle =
     createLifecycleObserver<I, E>(state as unknown as AnnotatorState<I, E>, undoStack, opts.adapter);
 
@@ -95,7 +94,6 @@ export const createTextAnnotator = <I extends TextAnnotationLike = TextAnnotatio
         : opts.renderer || USE_DEFAULT_RENDERER :
     null;
 
-  // Likewise: not an ideal cast...
   const renderer =
     useBuiltInRenderer === null ? (opts.renderer as RendererFactory<I>)(
       container,
@@ -107,7 +105,7 @@ export const createTextAnnotator = <I extends TextAnnotationLike = TextAnnotatio
       viewport) :
     useBuiltInRenderer === 'CSS_HIGHLIGHTS' ? createCSSHighlightRenderer(
       container,
-      state as unknown as TextAnnotatorState<TextAnnotation, E>,
+      state as unknown as TextAnnotatorState<TextAnnotationLike, E>,
       viewport) :
     undefined;
 
@@ -122,12 +120,11 @@ export const createTextAnnotator = <I extends TextAnnotationLike = TextAnnotatio
   if (opts.style)
     renderer.setStyle(opts.style);
 
-  // Likewise: not ideal casts...
   const selectionHandler = createSelectionHandler(
     container,
-    state as unknown as TextAnnotatorState<TextAnnotation, E>,
-    lifecycle as unknown as Lifecycle<TextAnnotation, E>,
-    opts as unknown as TextAnnotatorOptions<TextAnnotation, E>);
+    state as unknown as TextAnnotatorState<RevivedTextAnnotationLike, E>,
+    lifecycle as unknown as Lifecycle<TextAnnotationLike, E>,
+    opts as unknown as TextAnnotatorOptions<TextAnnotationLike, E>);
 
   selectionHandler.setUser(currentUser);
 

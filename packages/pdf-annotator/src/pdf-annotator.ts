@@ -2,7 +2,9 @@ import { createSelectionHandler, createSpansRenderer, fillDefaults } from '@reco
 import type { 
   AnnotatingMode, 
   HighlightStyleExpression, 
+  RevivedTextAnnotationLike, 
   TextAnnotation, 
+  TextAnnotationLike, 
   TextAnnotator, 
   TextAnnotatorOptions, 
   TextAnnotatorState
@@ -32,7 +34,7 @@ export interface PDFAnnotator extends Omit<TextAnnotator<PDFAnnotation, PDFAnnot
 
   setScale(scale: PDFScale | number): number;
 
-  setStyle(style?: HighlightStyleExpression, id?: string): void;
+  setStyle(style?: HighlightStyleExpression<PDFAnnotation>, id?: string): void;
 
   zoomIn(percentage?: number): number;
 
@@ -64,7 +66,7 @@ export const createPDFAnnotator = (
 
   const renderer = createSpansRenderer(
     viewerElement, 
-    state as unknown as TextAnnotatorState<TextAnnotation, PDFAnnotation>, 
+    state as unknown as TextAnnotatorState<TextAnnotationLike, PDFAnnotation>, 
     viewport);
 
   if (opts.style)
@@ -72,8 +74,8 @@ export const createPDFAnnotator = (
 
   const selectionHandler = createSelectionHandler(
     container.querySelector('.pdfViewer')!, 
-    state as unknown as TextAnnotatorState<TextAnnotation, PDFAnnotation>, 
-    lifecycle as Lifecycle<TextAnnotation, PDFAnnotation>,
+    state as unknown as TextAnnotatorState<RevivedTextAnnotationLike, PDFAnnotation>, 
+    lifecycle as Lifecycle<TextAnnotationLike, PDFAnnotation>,
     // @ts-ignore
     { ...opts, offsetReferenceSelector: '.page' }
   );
@@ -137,7 +139,7 @@ export const createPDFAnnotator = (
     }
   }
 
-  const setStyle = (style: HighlightStyleExpression | undefined, id?: string) =>
+  const setStyle = (style: HighlightStyleExpression<PDFAnnotation> | undefined, id?: string) =>
     renderer.setStyle(style, id);
 
   const setUser = (user: User) => {
