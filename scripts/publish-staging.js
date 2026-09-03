@@ -8,6 +8,7 @@ const REACT_TEXT_ANNOTATOR_WORKSPACE = '@soomo/react-text-annotator';
 const TEXT_ANNOTATOR_TEI_WORKSPACE = '@recogito/text-annotator-tei';
 const STAGING_BRANCH = 'staging';
 const STAGING_TAG = 'staging';
+const REMOTE_NAME = 'origin';
 const TEXT_ANNOTATOR_PACKAGE_JSON = path.join(
   ROOT_DIR,
   'packages',
@@ -104,9 +105,18 @@ const getNextMinorStagingVersion = currentVersion => {
   return `${major}.${minor + 1}.0-${STAGING_TAG}.0`;
 };
 
+const isStagingPrerelease = prerelease => prerelease?.startsWith(`${STAGING_TAG}.`);
+
 const getTargetVersion = () => {
   if (options.version) {
-    parseVersion(options.version);
+    const { prerelease } = parseVersion(options.version);
+
+    if (!isStagingPrerelease(prerelease)) {
+      throw new Error(
+        `Invalid staging version "${options.version}". Expected a prerelease suffix like -${STAGING_TAG}.0`
+      );
+    }
+
     return options.version;
   }
 
@@ -119,13 +129,23 @@ const ensureCleanWorktree = () => {
 
   if (status) {
     throw new Error(
-      'Release branch creation requires a clean working tree. Commit or stash your changes first.'
+      'Publishing requires a clean working tree. Commit or stash your changes first.'
     );
   }
 };
 
-const branchExists = branchName =>
+const localBranchExists = branchName =>
   runCapture('git', ['branch', '--list', branchName]).length > 0;
+
+const remoteBranchExists = branchName =>
+  runCapture('git', ['ls-remote', '--heads', REMOTE_NAME, branchName]).length > 0;
+
+const fetchRemoteBranch = branchName =>
+  run('git', [
+    'fetch',
+    REMOTE_NAME,
+    `refs/heads/${branchName}:refs/heads/${branchName}`
+  ]);
 
 const ensureReleaseBranch = targetVersion => {
   const currentBranch = getCurrentBranch();
@@ -135,7 +155,13 @@ const ensureReleaseBranch = targetVersion => {
     return releaseBranch;
   }
 
-  if (branchExists(releaseBranch)) {
+  if (localBranchExists(releaseBranch)) {
+    run('git', ['switch', releaseBranch]);
+    return releaseBranch;
+  }
+
+  if (remoteBranchExists(releaseBranch)) {
+    fetchRemoteBranch(releaseBranch);
     run('git', ['switch', releaseBranch]);
     return releaseBranch;
   }
@@ -145,8 +171,20 @@ const ensureReleaseBranch = targetVersion => {
     return releaseBranch;
   }
 
-  run('git', ['switch', '-c', releaseBranch, STAGING_BRANCH]);
-  return releaseBranch;
+  if (localBranchExists(STAGING_BRANCH)) {
+    run('git', ['switch', '-c', releaseBranch, STAGING_BRANCH]);
+    return releaseBranch;
+  }
+
+  if (remoteBranchExists(STAGING_BRANCH)) {
+    fetchRemoteBranch(STAGING_BRANCH);
+    run('git', ['switch', '-c', releaseBranch, STAGING_BRANCH]);
+    return releaseBranch;
+  }
+
+  throw new Error(
+    `Cannot create ${releaseBranch}: neither local branch "${STAGING_BRANCH}" nor remote branch "${REMOTE_NAME}/${STAGING_BRANCH}" exists. Fetch or create "${STAGING_BRANCH}" first.`
+  );
 };
 
 const publishWorkspace = workspace => {
@@ -171,16 +209,12 @@ const publishWorkspace = workspace => {
 
 const targetVersion = getTargetVersion();
 const releaseBranch = getReleaseBranchName(targetVersion);
-const currentBranch = getCurrentBranch();
 
 console.log(
   `Publishing ${TEXT_ANNOTATOR_WORKSPACE} and ${REACT_TEXT_ANNOTATOR_WORKSPACE} at ${targetVersion}`
 );
 
-if (currentBranch !== releaseBranch) {
-  ensureCleanWorktree();
-}
-
+ensureCleanWorktree();
 ensureReleaseBranch(targetVersion);
 
 run('npm', [
