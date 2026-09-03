@@ -10,7 +10,8 @@
   "license": "BSD-3-Clause",
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "publish:staging": "node ./scripts/publish-staging.js"
   },
   "workspaces": [
     "./packages/text-annotator",
