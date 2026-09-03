@@ -12,6 +12,21 @@ Also available: [React wrapper](packages/text-annotator-react) | [TEI/XML extens
 npm install @recogito/text-annotator
 ```
 
+## Publishing forked staging packages
+
+```sh
+npm run publish:staging
+```
+
+This creates or reuses a release branch derived from `staging`, bumps `@soomo/text-annotator` and `@soomo/react-text-annotator` to the same version, rebuilds them, and publishes both with the `staging` dist-tag. The existing `@recogito/text-annotator-tei` version stays unchanged; its workspace is only built as a local prerequisite for the React package. By default it calculates the next minor prerelease version (for example `4.4.5-staging.0` -> `4.5.0-staging.0`) and uses a branch named `release/staging-v<version>`.
+
+```sh
+npm run publish:staging -- 4.5.0-staging.0
+npm run publish:staging -- 4.5.0-staging.0 --branch=release/text-annotator-4.5.0-staging.0
+npm run publish:staging -- 4.5.0-staging.0 --otp=123456
+npm run publish:staging -- --skip-publish
+```
+
 ## Quick Start
 
 ```js
@@ -359,5 +374,4 @@ anno.setStyle((annotation, state, zIndex) => {
 
 ## License
 
-The Recogito Text Annotator is licensed under the [BSD 3-Clause](LICENSE) license. 
-
+The Recogito Text Annotator is licensed under the [BSD 3-Clause](LICENSE) license.
