@@ -30,7 +30,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^5.9.3",
-    "vite": "^7.3.5",
+    "vite": "^7.3.6",
     "vite-plugin-externalize-deps": "^0.10.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
@@ -50,7 +50,7 @@
     "@floating-ui/react": "^0.27.19",
     "@react-aria/live-announcer": "^3.3.4",
     "@soomo/text-annotator": "4.4.4-staging.0",
-    "@recogito/text-annotator-tei": "4.2.4",
+    "@recogito/text-annotator-tei": "4.2.5",
     "CETEIcean": "^1.9.5",
     "debounce": "^3.0.0",
     "dequal": "^2.0.3",
