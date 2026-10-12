@@ -1,6 +1,6 @@
 {
   "name": "@recogito/text-annotator-plugin-inline-markers",
-  "version": "0.0.1",
+  "version": "0.1.6",
   "description": "A plugin to the text annotator that places inline markers on text highlights",
   "author": "Rainer Simon",
   "license": "BSD-3-Clause",
@@ -14,7 +14,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/plugin-inline-markers.es.js"
-    }
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/plugin-inline-markers-react.es.js"
+    },
+    "./style.css": "./dist/index.css"
   },
   "scripts": {
     "start": "vite",
@@ -22,10 +27,33 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@annotorious/react": "^3.8.10",
+    "@recogito/react-text-annotator": "^4.3.4",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "typescript": "^5.9.3",
-    "vite": "^7.3.5"
+    "vite": "^7.3.6"
+  },
+  "peerDependencies": {
+    "@recogito/react-text-annotator": "^4.3.4",
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20"
+  },
+  "peerDependenciesMeta": {
+    "@recogito/react-text-annotator": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "dependencies": {
-    "@recogito/text-annotator": "^4.2.1"
+    "@recogito/text-annotator": "^4.3.4",
+    "@recogito/text-annotator-tei": "^4.3.4"
   }
 }

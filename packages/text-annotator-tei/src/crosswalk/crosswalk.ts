@@ -2,6 +2,10 @@ import { isRevived } from '@recogito/text-annotator';
 import type { RevivedTextSelector, TextSelector } from '@soomo/text-annotator';
 import type { RevivedTEIRangeSelector, TEIRangeSelector } from '../tei-annotation';
 
+/** 
+ * Note: module-level! This will break if multiple
+ * TEI annotator instances exist on the same page!
+ */
 const elementCache = new Map<string, Node>();
 
 /**
@@ -27,31 +31,80 @@ const resolveElement = (path: string, container: HTMLElement): Node | null => {
  * Walks text nodes in order, subtracting each node's length until the offset
  * lands within the current node.
  */
-export const reanchor = (originalNode: Node, parentNode: Node, originalOffset: number) => {
-  let node = originalNode;
-
-  let offset = originalOffset;
-
+const reanchor = (parentNode: Node, originalOffset: number) => {
   const walker = document.createTreeWalker(parentNode, NodeFilter.SHOW_TEXT);
 
-  let currentNode = walker.nextNode();
+  let remaining = originalOffset;
+  let last: Text | null = null;
+  let current: Node | null;
 
-  let run = true;
+  while ((current = walker.nextNode())) {
+    const text = current as Text;
+    if (remaining <= text.length)
+      return { node: text, offset: remaining };
 
-  do {
-    if (currentNode instanceof Text) {
-      if (currentNode.length < offset) {
-        offset -= currentNode.length;
-      } else {
-        node = currentNode;
-        run = false;
-      }
+    remaining -= text.length;
+    last = text;
+  }
+
+  // Offset past the end → clamp; no text at all (e.g. <lb>) → element, offset 0
+  return last
+    ? { node: last, offset: last.length }
+    : { node: parentNode, offset: 0 };
+}
+
+const isTeiElement = (node: Node): boolean =>
+  node.nodeType === Node.ELEMENT_NODE && node.nodeName.toLowerCase().startsWith('tei-');
+
+const isTransparent = (node: Node): boolean =>
+  node.nodeType === Node.ELEMENT_NODE && !isTeiElement(node);
+
+/** 
+ * Flattens transparent elements (like inline markers!) away, yielding only 
+ * Text nodes and tei-* elements
+ */
+function* relevantDescendants(node: Node): Generator<Node> {
+  for (let child = node.firstChild; child; child = child.nextSibling) {
+    if (child.nodeType === Node.TEXT_NODE || isTeiElement(child)) {
+      yield child;
+    } else if (isTransparent(child)) {
+      yield* relevantDescendants(child);
     }
+  }
+}
 
-    currentNode = walker.nextNode();
-  } while (currentNode && run);
+/**
+ * Index of `target` among `parent`'s relevant children, normalized so that 
+ * a text split into multiple Text nodes (e.g. by an inline marker!) counts 
+ * as a single sibling, indexed by its first fragment. This makes position 
+ * keys stable regardless of splits inserted by non-TEI elements.
+ */
+const normalizedIndexOf = (target: Node, parent: Node): number => {
+  let index = -1;
+  let precedingWasText = false;
 
-  return { node, offset };
+  for (const sig of relevantDescendants(parent)) {
+    const isText = sig.nodeType === Node.TEXT_NODE;
+
+    if (!(isText && precedingWasText)) index++; // new logical slot starts here
+
+    if (sig === target) return index;
+
+    precedingWasText = isText;
+  }
+
+  return -1; // target wasn't found under parent — shouldn't happen
+}
+
+/** 
+ * Nearest relevant ancestor (tei-* or the container itself)
+ */
+const relevantParent = (node: Node, container: HTMLElement): Node | null => {
+  let parent = node.parentNode;
+  while (parent && parent !== container && !isTeiElement(parent)) {
+    parent = parent.parentNode;
+  }
+  return parent;
 }
 
 /**
@@ -62,7 +115,7 @@ export const reanchor = (originalNode: Node, parentNode: Node, originalOffset: n
  * (regardless of element type), zero-padded to a fixed width so that
  * lexicographic string comparison (`localeCompare`) faithfully reproduces
  * document order.
- *
+ * 
  * Format:  "000002/000000/000005::0000000014"
  *          ^─────────────────^   ^─────────^
  *          one segment per DOM   char offset
@@ -80,20 +133,10 @@ export const toPositionKey = (
   let current: Node = node;
 
   while (current && current !== container) {
-    const parent = current.parentNode;
-    if (!parent) break;                 // climbed past the document root – shouldn't happen
+    const parent = relevantParent(current, container);
+    if (!parent) break;
 
-    // Walk forward through *all* siblings to find the absolute index.
-    // This is O(siblings-per-level) but is called once at annotation-load
-    // time and the result is persisted, so it never needs to be repeated.
-    let absoluteIndex = 0;
-    let sibling = parent.firstChild;
-    while (sibling && sibling !== current) {
-      absoluteIndex++;
-      sibling = sibling.nextSibling;
-    }
-
-    segments.unshift(absoluteIndex);    // prepend so root comes first
+    segments.unshift(normalizedIndexOf(current, parent));
     current = parent;
   }
 
@@ -189,12 +232,12 @@ const toTEIRange = (container: HTMLElement, startPath: string[], endPath: string
     selectedRange.endContainer,
     selectedRange.endOffset);
 
-  return {
+  return { 
     startPath: startPath.join(''),
-    startOffset,
+    startOffset, 
     endPath: endPath.join(''),
     endOffset
-  };
+  }; 
 }
 
 const parseXPathExpression = (expression: string) => {
@@ -204,7 +247,7 @@ const parseXPathExpression = (expression: string) => {
   const path = pathStr
     .replace(/\/([^[/]+)/g, (_, p1) => '/tei-' + p1.toLowerCase())
     .replace(/xml:/g, '');
-
+ 
   const offset = splitIdx < 0 ? 0 : parseInt(expression.substring(splitIdx + 2));
   return { path, offset };
 }
@@ -222,15 +265,15 @@ const textToTEISelector = (selector: RevivedTextSelector, container: HTMLElement
   const endPathSegments: string[] = getXPath(range.endContainer);
 
   // TEI XPath expressions + offset
-  const {
-    startPath,
-    startOffset,
+  const { 
+    startPath, 
+    startOffset, 
     endPath,
-    endOffset
+    endOffset 
   } = toTEIRange(container, startPathSegments, endPathSegments, range);
 
   // Lexically sortable position key
-  const position = toPositionKey(range.startContainer, startOffset, container);
+  const position = toPositionKey(range.startContainer, range.startOffset, container);
 
   return {
     position,
@@ -249,7 +292,7 @@ const textToTEISelector = (selector: RevivedTextSelector, container: HTMLElement
   };
 }
 
-export const isTEIRangeSelector = (selector: TEIRangeSelector | TextSelector): selector is TEIRangeSelector =>
+export const isTEIRangeSelector = (selector: TEIRangeSelector | TextSelector): selector is TEIRangeSelector => 
   'startSelector' in selector && 'endSelector' in selector && (
     selector.startSelector.type === 'XPathSelector' &&
     selector.endSelector.type === 'XPathSelector'
@@ -267,7 +310,6 @@ export const reviveSelector = (selector: TEIRangeSelector | RevivedTextSelector,
 
 const reviveTEISelector = (selector: TEIRangeSelector, container: HTMLElement): RevivedTEIRangeSelector => {
   // Don't revive unncessarily
-
   if (selector.position && isRevived(selector)) return selector;
 
   const startExpression = selector.startSelector?.value;
@@ -302,8 +344,8 @@ const reviveTEISelector = (selector: TEIRangeSelector, container: HTMLElement): 
     if (parent.firstChild instanceof Text && parent.firstChild.length >= offset) {
       return { node: parent.firstChild, offset };
     } else {
-      return reanchor(parent.firstChild!, parent, offset);
-    }
+      return reanchor(parent, offset);
+    } 
   }
 
   const reanchoredStart = reanchorIfNeeded(startElement, startParsed.offset);

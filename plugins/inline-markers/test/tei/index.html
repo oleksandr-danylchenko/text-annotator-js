@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css">
+    <title>TEI Example</title>
+    <style>
+      *,
+      *:before,
+      *:after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        background: #e2e2e2;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+      }
+
+      #content {
+        max-width: 800px;
+        background-color: #fff;
+        padding: 40px;
+        border-style: solid;
+        border-color: #cfcfcf;
+        border-width: 0 1px;
+        position: relative;
+      }
+
+      #content img {
+        max-width: 100%;
+      }
+
+      h1 {
+        margin: 0;
+        padding: 0 0 20px 0;
+      }
+
+      p {
+        font-size: 17px;
+        line-height: 160%;
+      }
+
+      #buttons {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 999;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="buttons">
+      <button id="toggle-markers">Toggle Markers</button>
+      <button id="delete">Delete</button>
+    </div>
+
+    <div id="content"></div>
+
+    <script type="module">
+      import CETEI from 'CETEIcean';
+      import { createTEIAnnotator } from '@recogito/text-annotator-tei';
+      import { InlineMarkersExtension } from '../../src/index.ts';
+
+      import '@recogito/text-annotator/text-annotator.css';
+
+      window.onload = async function () {
+        var CETEIcean = new CETEI();
+
+        const ext = InlineMarkersExtension();
+
+        // CETEIcean.getHTML5('chapter_BCar_incl_sandhi.xml', data => {
+        CETEIcean.getHTML5('I_grievd_for_Buonaparte.tei.xml', data => {
+          document.getElementById('content').appendChild(data);
+
+          // Apply not-annotatable
+          Array.from(document.querySelectorAll('tei-orig')).forEach(el => el.setAttribute('class', 'not-annotatable'));
+
+          var anno = createTEIAnnotator(document.getElementById('content'), { 
+            mergeHighlights: {
+              horizontalTolerance: 10
+            },
+            renderer: ext.Renderer
+          });
+
+          // anno.loadAnnotations('annotations.json');
+
+          let currentSelected;
+
+          anno.on('selectionChanged', sel => {
+            if (sel.length === 1)
+              currentSelected = sel[0];
+            else 
+              currentSelected = null;
+          });
+
+          document.getElementById('delete').addEventListener('click', () => {
+            if (currentSelected)
+              anno.removeAnnotation(currentSelected.id);
+          });
+        });
+
+        let showMarkers = true;
+
+        document.getElementById('toggle-markers').addEventListener('click', () => {
+          showMarkers = !showMarkers;
+          ext.setShowMarkers(showMarkers);
+        });
+      };
+    </script>
+  </body>
+</html>

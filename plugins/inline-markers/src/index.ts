@@ -1,1 +1,2 @@
-export * from './inline-markers-renderer';
+import './index.css';
+export * from './inline-markers-extension';

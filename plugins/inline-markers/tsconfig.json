@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "declaration": true,
     "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "isolatedModules": true,
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": false,
@@ -20,8 +20,7 @@
     "types": ["vite/client"]
   },
   "include": [
-    "src",
-    "test"
+    "src"
   ],
   "exclude": [
     "node_modules",

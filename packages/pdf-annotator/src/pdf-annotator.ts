@@ -17,11 +17,12 @@ import type { PDFScale } from './utils/pdf';
 import { addResizeObserver } from './utils/dom';
 import { scrollIntoView as _scrollIntoView } from './utils/annotation';
 import { setScale as _setScale, zoomIn as _zoomIn, zoomOut as _zoomOut } from './utils/pdf';
+import type { PDFAnnotatorOptions } from './pdf-annotator-options';
 
 import '@recogito/text-annotator/text-annotator.css';
 import './pdf-annotator.css';
 
-export interface PDFAnnotator extends Omit<TextAnnotator<PDFAnnotation, PDFAnnotation>, 'setAnnotatingEnabled' | 'redraw'> {
+export interface PDFAnnotator extends Omit<TextAnnotator<PDFAnnotation, PDFAnnotation>, 'setAnnotatingEnabled' | 'redraw' | 'setRenderer'> {
 
   element: HTMLElement;
 
@@ -44,139 +45,141 @@ export interface PDFAnnotator extends Omit<TextAnnotator<PDFAnnotation, PDFAnnot
 export const createPDFAnnotator = (
   container: HTMLDivElement, 
   pdfURL: string,
-  options: TextAnnotatorOptions<PDFAnnotation, PDFAnnotation> = {}
-): Promise<PDFAnnotator> => createPDFViewer(container, pdfURL).then(({ viewer, viewerElement }) => {
-  const opts = fillDefaults<PDFAnnotation, PDFAnnotation>(options, {
-    annotatingEnabled: true
-  });
+  options: PDFAnnotatorOptions = {}
+): Promise<PDFAnnotator> => createPDFViewer(container, pdfURL, options)
+  .then(({ viewer, viewerElement, destroy: destroyViewer }) => {
+    const opts = fillDefaults<PDFAnnotation, PDFAnnotation>(options, {
+      annotatingEnabled: true
+    });
 
-  const state = createPDFAnnotatorState(viewer, viewerElement, opts); 
+    const state = createPDFAnnotatorState(viewer, viewerElement, opts); 
 
-  const { store, viewport, selection } = state;
+    const { store, viewport, selection } = state;
 
-  const undoStack = createUndoStack<PDFAnnotation>(store as Store<PDFAnnotation>);
-  
-  const lifecycle = createLifecycleObserver<PDFAnnotation, PDFAnnotation>(
-    state as AnnotatorState<PDFAnnotation, PDFAnnotation>, 
-    undoStack, 
-    opts.adapter);
-
-  let currentUser: User = opts.user!;
-
-  const renderer = createSpansRenderer(
-    viewerElement, 
-    state as unknown as TextAnnotatorState<TextAnnotationLike, PDFAnnotation>, 
-    viewport);
-
-  if (opts.style)
-    renderer.setStyle(opts.style);
-
-  const selectionHandler = createSelectionHandler(
-    container.querySelector('.pdfViewer')!, 
-    state as unknown as TextAnnotatorState<RevivedTextAnnotationLike, PDFAnnotation>, 
-    lifecycle as Lifecycle<TextAnnotationLike, PDFAnnotation>,
-    { 
-      ...opts, 
-      offsetReferenceSelector: '.page' 
-    } as TextAnnotatorOptions<TextAnnotationLike, PDFAnnotation>
-  );
-
-  selectionHandler.setUser(currentUser);
-
-  viewer.eventBus.on('textlayerrendered', ({ pageNumber }: { pageNumber: number }) =>
-    store.onLazyRender(pageNumber));
-
-  const removeResizeObserver = addResizeObserver(container, () => {
-    const { currentScaleValue } = viewer;
-    if (
-      currentScaleValue === 'auto' ||
-      currentScaleValue === 'page-fit' ||
-      currentScaleValue === 'page-width'
-    ) {
-      // Refresh size
-      viewer.currentScaleValue = currentScaleValue;
-    }
-
-    viewer.update();
-  });
-
-  /*************************/
-  /*      External API     */
-  /******++++++*************/
-
-  // Most of the external API functions are covered in the base annotator
-  const base = createBaseAnnotator<PDFAnnotation, PDFAnnotation>(
-    state as unknown as AnnotatorState<PDFAnnotation, PDFAnnotation>,
-    undoStack);
-
-  const getUser = () => currentUser;
-
-  const destroy = () => {
-    removeResizeObserver();
-
-    renderer.destroy();
-    selectionHandler.destroy();
+    const undoStack = createUndoStack<PDFAnnotation>(store as Store<PDFAnnotation>);
     
-    undoStack.destroy();
-  }
+    const lifecycle = createLifecycleObserver<PDFAnnotation, PDFAnnotation>(
+      state as AnnotatorState<PDFAnnotation, PDFAnnotation>, 
+      undoStack, 
+      opts.adapter);
 
-  const scrollIntoView = _scrollIntoView(viewer, viewerElement, store);
+    let currentUser: User = opts.user!;
 
-  const setAnnotatingMode = (mode: AnnotatingMode) => {
-    selectionHandler.setAnnotatingMode(mode);
-  }
+    const renderer = createSpansRenderer(
+      viewerElement, 
+      state as unknown as TextAnnotatorState<TextAnnotationLike, PDFAnnotation>, 
+      viewport);
 
-  const setFilter = (filter?: Filter<PDFAnnotation>) => {
-    renderer.setFilter(filter);
-    selectionHandler.setFilter(filter);
-  }
+    if (opts.style)
+      renderer.setStyle(opts.style);
 
-  const setScale = _setScale(viewer);
+    const selectionHandler = createSelectionHandler(
+      container.querySelector('.pdfViewer')!, 
+      state as unknown as TextAnnotatorState<RevivedTextAnnotationLike, PDFAnnotation>, 
+      lifecycle as Lifecycle<TextAnnotationLike, PDFAnnotation>,
+      { 
+        ...opts, 
+        offsetReferenceSelector: '.page' 
+      } as TextAnnotatorOptions<TextAnnotationLike, PDFAnnotation>
+    );
 
-  const setSelected = (arg?: string | string[]) => {
-    if (arg) {
-      selection.setSelected(arg);
-    } else {
-      selection.clear();
+    selectionHandler.setUser(currentUser);
+
+    viewer.eventBus.on('textlayerrendered', ({ pageNumber }: { pageNumber: number }) =>
+      store.onLazyRender(pageNumber));
+
+    const removeResizeObserver = addResizeObserver(container, () => {
+      const { currentScaleValue } = viewer;
+      if (
+        currentScaleValue === 'auto' ||
+        currentScaleValue === 'page-fit' ||
+        currentScaleValue === 'page-width'
+      ) {
+        // Refresh size
+        viewer.currentScaleValue = currentScaleValue;
+      }
+
+      viewer.update();
+    });
+
+    /*************************/
+    /*      External API     */
+    /******++++++*************/
+
+    // Most of the external API functions are covered in the base annotator
+    const base = createBaseAnnotator<PDFAnnotation, PDFAnnotation>(
+      state as unknown as AnnotatorState<PDFAnnotation, PDFAnnotation>,
+      undoStack);
+
+    const getUser = () => currentUser;
+
+    const destroy = () => {
+      removeResizeObserver();
+
+      renderer.destroy();
+      selectionHandler.destroy();
+      
+      undoStack.destroy();
+
+      destroyViewer();
     }
-  }
 
-  const setStyle = (style: HighlightStyleExpression<PDFAnnotation> | undefined, id?: string) =>
-    renderer.setStyle(style, id);
+    const scrollIntoView = _scrollIntoView(viewer, viewerElement, store);
 
-  const setUser = (user: User) => {
-    currentUser = user;
-    selectionHandler.setUser(user);
-  }
+    const setAnnotatingMode = (mode: AnnotatingMode) => {
+      selectionHandler.setAnnotatingMode(mode);
+    }
 
-  const setVisible = (visible: boolean) =>
-    renderer.setVisible(visible);
+    const setFilter = (filter?: Filter<PDFAnnotation>) => {
+      renderer.setFilter(filter);
+      selectionHandler.setFilter(filter);
+    }
 
-  const zoomIn = _zoomIn(viewer);
-  
-  const zoomOut = _zoomOut(viewer);
+    const setScale = _setScale(viewer);
 
-  return {
-    ...base,
-    element: viewerElement,
-    get currentScale() { return viewer.currentScale },
-    get currentScaleValue() { return viewer.currentScaleValue },
-    destroy,
-    getUser,
-    on: lifecycle.on,
-    off: lifecycle.off,
-    setAnnotatingMode,
-    setFilter,
-    setScale,
-    setSelected,
-    setStyle,
-    setUser,
-    setVisible,
-    scrollIntoView,
-    zoomIn,
-    zoomOut,
-    renderer,
-    state
-  }
+    const setSelected = (arg?: string | string[]) => {
+      if (arg) {
+        selection.setSelected(arg);
+      } else {
+        selection.clear();
+      }
+    }
 
-});
+    const setStyle = (style: HighlightStyleExpression<PDFAnnotation> | undefined, id?: string) =>
+      renderer.setStyle(style, id);
+
+    const setUser = (user: User) => {
+      currentUser = user;
+      selectionHandler.setUser(user);
+    }
+
+    const setVisible = (visible: boolean) =>
+      renderer.setVisible(visible);
+
+    const zoomIn = _zoomIn(viewer);
+    
+    const zoomOut = _zoomOut(viewer);
+
+    return {
+      ...base,
+      element: viewerElement,
+      get currentScale() { return viewer.currentScale },
+      get currentScaleValue() { return viewer.currentScaleValue },
+      destroy,
+      getUser,
+      on: lifecycle.on,
+      off: lifecycle.off,
+      setAnnotatingMode,
+      setFilter,
+      setScale,
+      setSelected,
+      setStyle,
+      setUser,
+      setVisible,
+      scrollIntoView,
+      zoomIn,
+      zoomOut,
+      renderer,
+      state
+    }
+  });
