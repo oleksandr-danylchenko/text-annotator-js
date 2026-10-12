@@ -119,6 +119,22 @@ const assertPublishVersions = version => {
   }
 };
 
+const commitPublishedVersions = version => {
+  assertPublishVersions(version);
+
+  run('git', [
+    'add',
+    path.relative(ROOT_DIR, TEXT_ANNOTATOR_PACKAGE_JSON),
+    path.relative(ROOT_DIR, REACT_TEXT_ANNOTATOR_PACKAGE_JSON),
+    'package-lock.json'
+  ]);
+  run('git', [
+    'commit',
+    '-m',
+    `Bumped \`${TEXT_ANNOTATOR_WORKSPACE}\` and \`${REACT_TEXT_ANNOTATOR_WORKSPACE}\` to \`${version}\``
+  ]);
+};
+
 const getCurrentBranch = () => runCapture('git', ['branch', '--show-current']);
 
 const getReleaseBranchName = targetVersion =>
@@ -279,6 +295,7 @@ run('npm', ['run', 'build', '--workspace', REACT_TEXT_ANNOTATOR_WORKSPACE]);
 if (!options.skipPublish) {
   assertPublishVersions(targetVersion);
   publishWorkspace(REACT_TEXT_ANNOTATOR_WORKSPACE);
+  commitPublishedVersions(targetVersion);
 }
 
 console.log(
