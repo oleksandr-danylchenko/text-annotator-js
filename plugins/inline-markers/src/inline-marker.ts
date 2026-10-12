@@ -1,4 +1,4 @@
-import { TextAnnotation } from '@recogito/text-annotator';
+import { RevivedTextAnnotationLike } from '@recogito/text-annotator';
 
 export interface InlineMarker {
 
@@ -6,7 +6,9 @@ export interface InlineMarker {
 
 }
 
-export const createInlineMarker = (annotations: TextAnnotation[]): InlineMarker => {
+export const createInlineMarker = (annotations: RevivedTextAnnotationLike[]): InlineMarker => {
+  // console.debug('[inline-markers] creating marker');
+  // console.debug(annotations);
 
   const marker = document.createElement('marker');
   marker.className = 'r6o-annotation-start';
@@ -17,9 +19,8 @@ export const createInlineMarker = (annotations: TextAnnotation[]): InlineMarker 
   
   marker.appendChild(span);
 
-  annotations[0].target.selector.map(selector => {
-    selector.range.insertNode(marker);
-  });
+  // console.debug('[inline-markers] appending to', annotations[0].target.selector[0]);
+  annotations[0].target.selector[0].range.insertNode(marker);
 
   const remove = () => {
     marker.remove();

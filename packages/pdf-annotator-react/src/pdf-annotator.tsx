@@ -1,12 +1,18 @@
 import { ReactNode, useContext, useEffect, useRef } from 'react';
 import { AnnotoriousContext } from '@annotorious/react';
-import { Filter, TextAnnotatorOptions, HighlightStyleExpression } from '@recogito/text-annotator';
-import { createPDFAnnotator, PDFAnnotator as VanillaPDFAnnotator, PDFScale, PDFAnnotation } from '@recogito/pdf-annotator';
+import type { Filter, HighlightStyleExpression } from '@recogito/text-annotator';
+import { 
+  createPDFAnnotator, 
+  type PDFAnnotator as VanillaPDFAnnotator, 
+  type PDFScale, 
+  type PDFAnnotatorOptions,
+  type PDFAnnotation 
+} from '@recogito/pdf-annotator';
 
-import '@recogito/pdf-annotator/pdf-anntator.css';
+import '@recogito/pdf-annotator/pdf-annotator.css';
 import './pdf-annotator.css';
 
-export type PDFAnnotatorProps = TextAnnotatorOptions<PDFAnnotation, PDFAnnotation> & {
+export type PDFAnnotatorProps = PDFAnnotatorOptions & {
 
   children?: ReactNode;
 
@@ -32,16 +38,35 @@ export const PDFAnnotator = (props: PDFAnnotatorProps) => {
 
   useEffect(() => {     
     if (!el.current) return;
+
+    let cancelled = false;
+    let instance: VanillaPDFAnnotator | undefined;
     
     createPDFAnnotator(el.current, pdfUrl, opts)
       .then(anno => {
+        if (cancelled) {
+          anno.destroy();
+          return;
+        }
         
+        instance = anno;
         anno.setStyle(props.style);
         setAnno(anno);
 
-        props.onRendered && props.onRendered();
+        props.onRendered?.();
+      }).catch(error => {
+        if (!cancelled) console.error(error);
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+
+      if (instance) {
+        setAnno(undefined);
+        instance.destroy();
+      }
+    }
+  }, [pdfUrl]);
 
   useEffect(() => {
     if (props.pageSize && anno)

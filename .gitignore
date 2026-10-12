@@ -2,6 +2,10 @@
 .idea
 .claude
 
+pdf.worker.min.mjs
+jbig2_nowasm_fallback.js 
+jbig2.wasm
+
 dist
 node_modules
 

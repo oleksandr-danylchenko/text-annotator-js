@@ -2,7 +2,7 @@
 
 A JavaScript library for PDF annotation, using [PDF.js](https://mozilla.github.io/pdf.js/) and the [Recogito Text Annotator](https://github.com/recogito/text-annotator-js).
 
-Also available: [React wrapper](packages/pdf-annotator-react)
+Also available: [React wrapper](../pdf-annotator-react)
 
 ![Animated screenshot of the Recogito PDF Annotator](animated-screenshot.gif "Animated screenshot of the Recogito PDF Annotator")
 
@@ -45,6 +45,8 @@ const anno = createPDFAnnotator(element, url, options);
 | `selectionMode` | `'shortest' \| 'all'` | `'shortest'` | When the user selects overlapping annotations: select all or only the shortest. |
 | `style` | `HighlightStyleExpression` | `undefined` | Custom styling function for highlights. |
 | `user` | `User` | anonymous guest | Current user information, automatically added to created or updated annotations. |
+| `workerSrc` | `string` | `/pdf.worker.min.mjs` | Path to the PDF.js web worker script. |
+| `wasmUrl` | `string` | `/` | Path to the WASM helper directory. |
 
 ## Annotator API
 

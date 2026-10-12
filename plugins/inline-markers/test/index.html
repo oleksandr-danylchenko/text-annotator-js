@@ -38,21 +38,8 @@
         line-height: 160%;
       }
 
-      marker {
-        padding-right: 2px;
-        pointer-events: none;
-      }
-
-      marker > span:before {
-        position:relative;
-        border-right: 1.5px solid oklch(59% 0.136 62 / 0.8);
-        color: oklch(59% 0.136 62);
-        font-family: sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        content: attr(data-count);
-        padding-right: 2px;
-        bottom: 1px;
+      #content {
+        padding-top: 20px;
       }
 
       #selection {
@@ -78,6 +65,10 @@
 
   <body>
     <div id="container">
+      <div>
+        <button id="toggle-markers">Toggle Markers</button>
+      </div>
+
       <div id="content">
         <h1>Homer: The Odyssey</h1>
         <p>
@@ -98,46 +89,37 @@
       </div>
     </div>
 
-
     <script type="module">
       import { createTextAnnotator, W3CTextFormat } from '@recogito/text-annotator';
-      import { InlineMarkersRenderer } from '../src/index.ts';
+      import { InlineMarkersExtension } from '../src/index.ts';
 
       import '@recogito/text-annotator/text-annotator.css';
 
       const STYLE_NO_HOVER = {
-        // fill: 'oklch(0.8 0.18 59.17 / 0.14)',
         fill: 'oklch(0.8 0.18 59.17 / 0.25)',
       };
 
       const STYLE_HOVER = (_, state, z) => {
         return state.hovered ? {
-          // fill: 'oklch(0.8 0.18 59.17 / 0.7)',
           fill: 'oklch(0.87 0.12 66.96)',
-          // fill: 'oklch(0.8 0.18 59.17 / 0.5)',
-          // underlineColor: 'oklch(0.78 0.19 57.08 / 0.75)',
-          // underlineThickness: 1.5,
-          // underlineOffset: 3.5 * z
         } : {
           fill: '#bcbcbc40',
-          // underlineColor: 'oklch(0.78 0.19 57.08 / 0.75)',
-          // underlineThickness: 1.5,
-          // underlineOffset: 3.5 * z
         }
       }
 
       window.onload = async () => {
         const contentContainer = document.getElementById('content');
+
+        const ext = InlineMarkersExtension();
+
         const r = createTextAnnotator(contentContainer, {
-          // annotatingEnabled: false,
           mergeHighlights: {
             horizontalTolerance: 30
           },
           style: STYLE_NO_HOVER,
-          renderer: InlineMarkersRenderer
+          selectionMode: 'all',
+          renderer: ext.Renderer
         });
-
-        // const plugin = mountPlugin(r);
 
         r.loadAnnotations('annotations.json');
 
@@ -149,27 +131,33 @@
           r.setStyle(STYLE_NO_HOVER);
         });
 
+        r.on('createAnnotation', a => console.log('created', a));
+
         r.on('selectionChanged', sel => {
           if (sel.length > 0) {
-            // Find all at this place
-            const { start, end } = sel[0].target.selector[0];
-            // console.log(start, end);
+            // Selection is ALL annotations overlapping this space -
+            // filter only those that start at the same spot as the topmost
+            const top = sel[0];
 
-            const all = r.getAnnotations().filter(a => {
-              const selector = a.target.selector[0];
-              return selector.start === start && selector.end === end;
+            const colocated = sel.filter(a => {
+              return a.target.selector[0].start === top.target.selector[0].start;
             });
 
-            if (all.length > 0) {
-              document.querySelector('#selection > div').innerHTML = 
-                '<ul>' +
-                all.map(a => `<li>${a.target.selector[0].quote}</li>`).join('') +
-                '</ul>';
-            } else {
-              document.querySelector('#selection ul').innerHTML = 
-                '<p class="empty">Click an annotation to select!</p>';
-            }
-          }
+            document.querySelector('#selection > div').innerHTML = 
+              '<ul>' +
+                colocated.map(a => `<li>${a.target.selector[0].quote}</li>`).join('') +
+              '</ul>';
+          } else {
+            document.querySelector('#selection ul').innerHTML = 
+              '<p class="empty">Click an annotation to select!</p>';
+          }          
+        });
+
+        let showMarkers = true;
+
+        document.getElementById('toggle-markers').addEventListener('click', () => {
+          showMarkers = !showMarkers;
+          ext.setShowMarkers(showMarkers);
         });
 
         window.r = r;
