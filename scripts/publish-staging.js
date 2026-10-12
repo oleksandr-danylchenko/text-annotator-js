@@ -15,6 +15,12 @@ const TEXT_ANNOTATOR_PACKAGE_JSON = path.join(
   'text-annotator',
   'package.json'
 );
+const REACT_TEXT_ANNOTATOR_PACKAGE_JSON = path.join(
+  ROOT_DIR,
+  'packages',
+  'text-annotator-react',
+  'package.json'
+);
 
 const args = process.argv.slice(2);
 
@@ -77,6 +83,57 @@ const runCapture = (command, commandArgs) => {
 };
 
 const readJson = filePath => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+const writeJson = (filePath, value) =>
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+
+const setPackageVersion = (filePath, version) => {
+  const packageJson = readJson(filePath);
+  packageJson.version = version;
+  writeJson(filePath, packageJson);
+};
+
+const setReactPackageVersions = version => {
+  const packageJson = readJson(REACT_TEXT_ANNOTATOR_PACKAGE_JSON);
+  packageJson.version = version;
+  packageJson.dependencies[TEXT_ANNOTATOR_WORKSPACE] = version;
+  writeJson(REACT_TEXT_ANNOTATOR_PACKAGE_JSON, packageJson);
+};
+
+const assertPublishVersions = version => {
+  const textAnnotator = readJson(TEXT_ANNOTATOR_PACKAGE_JSON);
+  const reactTextAnnotator = readJson(REACT_TEXT_ANNOTATOR_PACKAGE_JSON);
+  const textDependency = reactTextAnnotator.dependencies?.[TEXT_ANNOTATOR_WORKSPACE];
+
+  if (
+    textAnnotator.version !== version ||
+    reactTextAnnotator.version !== version ||
+    textDependency !== version
+  ) {
+    throw new Error(
+      `Cannot publish mismatched packages: expected ${TEXT_ANNOTATOR_WORKSPACE}, ` +
+      `${REACT_TEXT_ANNOTATOR_WORKSPACE}, and its ${TEXT_ANNOTATOR_WORKSPACE} ` +
+      `dependency to all be ${version}; found ${textAnnotator.version}, ` +
+      `${reactTextAnnotator.version}, and ${textDependency || 'missing'}.`
+    );
+  }
+};
+
+const commitPublishedVersions = version => {
+  assertPublishVersions(version);
+
+  run('git', [
+    'add',
+    path.relative(ROOT_DIR, TEXT_ANNOTATOR_PACKAGE_JSON),
+    path.relative(ROOT_DIR, REACT_TEXT_ANNOTATOR_PACKAGE_JSON),
+    'package-lock.json'
+  ]);
+  run('git', [
+    'commit',
+    '-m',
+    `Bumped \`${TEXT_ANNOTATOR_WORKSPACE}\` and \`${REACT_TEXT_ANNOTATOR_WORKSPACE}\` to \`${version}\``
+  ]);
+};
 
 const getCurrentBranch = () => runCapture('git', ['branch', '--show-current']);
 
@@ -217,13 +274,7 @@ console.log(
 ensureCleanWorktree();
 ensureReleaseBranch(targetVersion);
 
-run('npm', [
-  'pkg',
-  'set',
-  `version=${targetVersion}`,
-  '--workspace',
-  TEXT_ANNOTATOR_WORKSPACE
-]);
+setPackageVersion(TEXT_ANNOTATOR_PACKAGE_JSON, targetVersion);
 
 run('npm', ['install']);
 run('npm', ['run', 'build', '--workspace', TEXT_ANNOTATOR_WORKSPACE]);
@@ -232,27 +283,19 @@ if (!options.skipPublish) {
   publishWorkspace(TEXT_ANNOTATOR_WORKSPACE);
 }
 
-run('npm', [
-  'pkg',
-  'set',
-  `version=${targetVersion}`,
-  '--workspace',
-  REACT_TEXT_ANNOTATOR_WORKSPACE
-]);
+setReactPackageVersions(targetVersion);
+assertPublishVersions(targetVersion);
 
-run('npm', [
-  'install',
-  '--save-exact',
-  `${TEXT_ANNOTATOR_WORKSPACE}@${targetVersion}`,
-  '--workspace',
-  REACT_TEXT_ANNOTATOR_WORKSPACE
-]);
+run('npm', ['install']);
+assertPublishVersions(targetVersion);
 
 run('npm', ['run', 'build', '--workspace', TEXT_ANNOTATOR_TEI_WORKSPACE]);
 run('npm', ['run', 'build', '--workspace', REACT_TEXT_ANNOTATOR_WORKSPACE]);
 
 if (!options.skipPublish) {
+  assertPublishVersions(targetVersion);
   publishWorkspace(REACT_TEXT_ANNOTATOR_WORKSPACE);
+  commitPublishedVersions(targetVersion);
 }
 
 console.log(
